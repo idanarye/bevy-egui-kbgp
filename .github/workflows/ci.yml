@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
 jobs:
   ci:
     name: CI
@@ -113,7 +113,7 @@ jobs:
   docs-ghpages:
     name: Update Docs in GitHub Pages
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
       - name: Install packages for testing GTK
