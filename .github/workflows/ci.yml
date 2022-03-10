@@ -26,7 +26,6 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           override: true
-          target: wasm32-unknown-unknown
       - name: Ready cache
         if: matrix.os == 'ubuntu-latest'
         run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
@@ -112,6 +111,9 @@ jobs:
       - uses: jetli/wasm-bindgen-action@v0.1.0
         with:
           version: 'latest'
+        uses: actions-rs/toolchain@v1
+        with:
+          target: wasm32-unknown-unknown
       #- name: Install packages for WASM
         #run: |-
           #cargo install wasm-bindgen-cli
