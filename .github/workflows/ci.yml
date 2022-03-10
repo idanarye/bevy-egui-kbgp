@@ -65,10 +65,6 @@ jobs:
           toolchain: nightly
           override: true
           components: clippy
-      - name: Install packages for testing GTK
-        run: |-
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev
       - name: Cache cargo
         uses: actions/cache@v1
         id: cache
@@ -90,10 +86,6 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
-      - name: Install packages for testing GTK
-        run: |-
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev
       - name: Cache cargo
         uses: actions/cache@v1
         id: cache
@@ -110,23 +102,42 @@ jobs:
         with:
           command: doc
           args: --no-deps
-  docs-ghpages:
+  docs-and-demos-ghpages:
     name: Update Docs in GitHub Pages
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v2
-      - name: Install packages for testing GTK
-        run: |-
-          sudo apt-get update
-          sudo apt-get install libgtk-3-dev
+      - uses: jetli/wasm-bindgen-action@v0.1.0
+        with:
+          version: 'latest'
+      #- name: Install packages for WASM
+        #run: |-
+          #cargo install wasm-bindgen-cli
       - name: Build docs
         env:
           GITHUB_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
           cargo doc --verbose &&
-          echo "<meta http-equiv=refresh content=0;url=bevy-egui-kbgp/index.html>" > target/doc/index.html &&
+          echo "<meta http-equiv=refresh content=0;url=bevy_egui_kbgp/index.html>" > target/doc/index.html &&
+          cargo build --examples --target wasm32-unknown-unknown &&
+          for demowasm in $(cd target/wasm32-unknown-unknown/debug/examples; ls *.wasm | grep -v -); do
+              wasm-bindgen target/wasm32-unknown-unknown/debug/examples/$demowasm --out-dir target/doc/demos/
+              cat > target/doc/demos/${demowasm%.*}.html <<EOF
+          <html lang="en-us">
+              <head>
+                  <script type="module">
+                      import init from './$demowasm';
+                      var res = await init();
+                      res.start();
+                  </script>
+              </head>
+              <body>
+              </body>
+          </html>
+          EOF
+          done &&
           pip install ghp-import --user && export PATH=$HOME/.local/bin:$PATH &&
-          ghp-import -n target/doc &&
+          ghp-import --no-jekyll target/doc &&
           git push -fq https://${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git gh-pages
