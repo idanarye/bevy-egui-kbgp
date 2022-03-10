@@ -26,6 +26,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           override: true
+          target: wasm32-unknown-unknown
       - name: Ready cache
         if: matrix.os == 'ubuntu-latest'
         run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
@@ -103,7 +104,7 @@ jobs:
           command: doc
           args: --no-deps
   docs-and-demos-ghpages:
-    name: Update Docs in GitHub Pages
+    name: Update Docs and Demos in GitHub Pages
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
