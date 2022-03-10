@@ -20,7 +20,7 @@ impl KbgpPrepareHandle {
     }
 
     pub fn navigate_down(&mut self) {
-    self.direction_input |= DIRECTION_MASK_DOWN;
+        self.direction_input |= DIRECTION_MASK_DOWN;
     }
 
     pub fn navigate_left(&mut self) {
@@ -59,7 +59,11 @@ pub struct Kbgp {
 }
 
 impl Kbgp {
-    pub fn prepare(&mut self, egui_ctx: &egui::CtxRef, prepare_dlg: impl FnOnce(&mut KbgpPrepareHandle)) {
+    pub fn prepare(
+        &mut self,
+        egui_ctx: &egui::CtxRef,
+        prepare_dlg: impl FnOnce(&mut KbgpPrepareHandle),
+    ) {
         self.nodes.retain(|_, data| data.still_there);
         for node_data in self.nodes.values_mut() {
             node_data.still_there = false;
@@ -108,10 +112,20 @@ impl Kbgp {
         self.prev_direction_input = handle.direction_input;
     }
 
-    pub fn move_focus(&mut self, egui_ctx: &egui::CtxRef, transform_pos_downward: impl Fn(egui::Pos2) -> egui::Pos2) {
+    pub fn move_focus(
+        &mut self,
+        egui_ctx: &egui::CtxRef,
+        transform_pos_downward: impl Fn(egui::Pos2) -> egui::Pos2,
+    ) {
         let transform_rect_downward = |rect: egui::Rect| -> egui::Rect {
-            let egui::Pos2 { x: mut left, y: mut top } = transform_pos_downward(rect.min);
-            let egui::Pos2 { x: mut right, y: mut bottom } = transform_pos_downward(rect.max);
+            let egui::Pos2 {
+                x: mut left,
+                y: mut top,
+            } = transform_pos_downward(rect.min);
+            let egui::Pos2 {
+                x: mut right,
+                y: mut bottom,
+            } = transform_pos_downward(rect.max);
             if right < left {
                 std::mem::swap(&mut left, &mut right);
             }
@@ -120,10 +134,16 @@ impl Kbgp {
             }
             egui::Rect {
                 min: egui::Pos2 { x: left, y: top },
-                max: egui::Pos2 { x: right, y: bottom },
+                max: egui::Pos2 {
+                    x: right,
+                    y: bottom,
+                },
             }
         };
-        let transformed_nodes = self.nodes.iter().map(|(id, data)| (id, transform_rect_downward(data.rect)));
+        let transformed_nodes = self
+            .nodes
+            .iter()
+            .map(|(id, data)| (id, transform_rect_downward(data.rect)));
         let focused_node_id = egui_ctx.memory().focus();
         let move_to = if let Some(focused_node_id) = focused_node_id {
             let focused_node_rect = if let Some(data) = self.nodes.get(&focused_node_id) {
@@ -138,38 +158,45 @@ impl Kbgp {
                 max_y: f32,
                 x_drift: f32,
             }
-            transformed_nodes.filter_map(|(id, rect)| {
-                if *id == focused_node_id {
-                    return None;
-                }
-                let min_y_diff = rect.min.y - focused_node_rect.max.y;
-                if min_y_diff < 0.0 {
-                    return None;
-                }
-                Some((id, InfoForComparison {
-                    min_y: min_y_diff,
-                    max_y: rect.max.y - focused_node_rect.max.y,
-                    x_drift: {
-                        if focused_node_rect.max.x < rect.min.x {
-                            rect.max.x - focused_node_rect.min.x
-                        } else if rect.max.x < focused_node_rect.min.x {
-                            focused_node_rect.max.x - rect.min.x
-                        } else {
-                            0.0
-                        }
-                    },
-                }))
-            })
-            .min_by(|(_, a), (_, b)| {
-                if a.max_y < b.min_y && b.max_y < a.min_y {
-                    a.x_drift.partial_cmp(&b.x_drift).unwrap()
-                } else {
-                    (a.min_y + a.x_drift).partial_cmp(&(b.min_y + b.x_drift)).unwrap()
-                }
-            })
-            .map(|(id, _)| id)
+            transformed_nodes
+                .filter_map(|(id, rect)| {
+                    if *id == focused_node_id {
+                        return None;
+                    }
+                    let min_y_diff = rect.min.y - focused_node_rect.max.y;
+                    if min_y_diff < 0.0 {
+                        return None;
+                    }
+                    Some((
+                        id,
+                        InfoForComparison {
+                            min_y: min_y_diff,
+                            max_y: rect.max.y - focused_node_rect.max.y,
+                            x_drift: {
+                                if focused_node_rect.max.x < rect.min.x {
+                                    rect.max.x - focused_node_rect.min.x
+                                } else if rect.max.x < focused_node_rect.min.x {
+                                    focused_node_rect.max.x - rect.min.x
+                                } else {
+                                    0.0
+                                }
+                            },
+                        },
+                    ))
+                })
+                .min_by(|(_, a), (_, b)| {
+                    if a.max_y < b.min_y && b.max_y < a.min_y {
+                        a.x_drift.partial_cmp(&b.x_drift).unwrap()
+                    } else {
+                        (a.min_y + a.x_drift)
+                            .partial_cmp(&(b.min_y + b.x_drift))
+                            .unwrap()
+                    }
+                })
+                .map(|(id, _)| id)
         } else {
-            transformed_nodes.map(|(id, rect)| (id, (rect.min.y, rect.min.x)))
+            transformed_nodes
+                .map(|(id, rect)| (id, (rect.min.y, rect.min.x)))
                 .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
                 .map(|(id, _)| id)
         };
@@ -188,10 +215,13 @@ impl KbgpEguiResponseExt for egui::Response {
         if Some(self.id) == kbgp.move_focus {
             self.request_focus();
         }
-        kbgp.nodes.insert(self.id, NodeData {
-            rect: self.rect,
-            still_there: true,
-        });
+        kbgp.nodes.insert(
+            self.id,
+            NodeData {
+                rect: self.rect,
+                still_there: true,
+            },
+        );
         self
     }
 }
