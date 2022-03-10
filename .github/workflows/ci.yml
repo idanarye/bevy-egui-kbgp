@@ -114,6 +114,8 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           target: wasm32-unknown-unknown
+          toolchain: nightly
+          override: true
       #- name: Install packages for WASM
         #run: |-
           #cargo install wasm-bindgen-cli
