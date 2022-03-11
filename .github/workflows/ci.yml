@@ -127,7 +127,7 @@ jobs:
           echo "<meta http-equiv=refresh content=0;url=bevy_egui_kbgp/index.html>" > target/doc/index.html &&
           cargo build --examples --target wasm32-unknown-unknown &&
           for demowasm in $(cd target/wasm32-unknown-unknown/debug/examples; ls *.wasm | grep -v -); do
-              wasm-bindgen target/wasm32-unknown-unknown/debug/examples/$demowasm --out-dir target/doc/demos/
+              wasm-bindgen target/wasm32-unknown-unknown/debug/examples/$demowasm --out-dir target/doc/demos/ --target web
               cat > target/doc/demos/${demowasm%.*}.html <<EOF
           <html lang="en-us">
               <head>
