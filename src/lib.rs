@@ -1,34 +1,36 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-const DIRECTION_MASK_UP: u8 = 1;
-const DIRECTION_MASK_DOWN: u8 = 2;
-const DIRECTION_MASK_VERTICAL: u8 = DIRECTION_MASK_UP | DIRECTION_MASK_DOWN;
-const DIRECTION_MASK_LEFT: u8 = 4;
-const DIRECTION_MASK_RIGHT: u8 = 8;
-const DIRECTION_MASK_HORIZONTAL: u8 = DIRECTION_MASK_LEFT | DIRECTION_MASK_RIGHT;
+const INPUT_MASK_UP: u8 = 1;
+const INPUT_MASK_DOWN: u8 = 2;
+const INPUT_MASK_VERTICAL: u8 = INPUT_MASK_UP | INPUT_MASK_DOWN;
+const INPUT_MASK_LEFT: u8 = 4;
+const INPUT_MASK_RIGHT: u8 = 8;
+const INPUT_MASK_HORIZONTAL: u8 = INPUT_MASK_LEFT | INPUT_MASK_RIGHT;
+
+const INPUT_MASK_ACTIVATE: u8 = 16;
 
 pub struct KbgpPrepareHandle {
     pub secs_after_first_movement: f64,
     pub secs_between_movements: f64,
-    direction_input: u8,
+    input: u8,
 }
 
 impl KbgpPrepareHandle {
     pub fn navigate_up(&mut self) {
-        self.direction_input |= DIRECTION_MASK_UP;
+        self.input |= INPUT_MASK_UP;
     }
 
     pub fn navigate_down(&mut self) {
-        self.direction_input |= DIRECTION_MASK_DOWN;
+        self.input |= INPUT_MASK_DOWN;
     }
 
     pub fn navigate_left(&mut self) {
-        self.direction_input |= DIRECTION_MASK_LEFT;
+        self.input |= INPUT_MASK_LEFT;
     }
 
     pub fn navigate_right(&mut self) {
-        self.direction_input |= DIRECTION_MASK_RIGHT;
+        self.input |= INPUT_MASK_RIGHT;
     }
 
     pub fn navigate_keyboard_default(&mut self, keys: &Input<KeyCode>) {
@@ -38,6 +40,48 @@ impl KbgpPrepareHandle {
                 KeyCode::Down => self.navigate_down(),
                 KeyCode::Left => self.navigate_left(),
                 KeyCode::Right => self.navigate_right(),
+                _ => (),
+            }
+        }
+    }
+
+    pub fn navigate_gamepad_default(
+        &mut self,
+        gamepads: &Gamepads,
+        axes: &Axis<GamepadAxis>,
+        buttons: &Input<GamepadButton>,
+    ) {
+        for gamepad in gamepads.iter() {
+            for (axis_type, mask_for_negative, mask_for_positive) in [
+                (GamepadAxisType::DPadX, INPUT_MASK_LEFT, INPUT_MASK_RIGHT),
+                (GamepadAxisType::DPadY, INPUT_MASK_DOWN, INPUT_MASK_UP),
+                (
+                    GamepadAxisType::LeftStickX,
+                    INPUT_MASK_LEFT,
+                    INPUT_MASK_RIGHT,
+                ),
+                (GamepadAxisType::LeftStickY, INPUT_MASK_DOWN, INPUT_MASK_UP),
+            ] {
+                if let Some(axis_value) = axes.get(GamepadAxis(*gamepad, axis_type)) {
+                    if axis_value < -0.5 {
+                        self.input |= mask_for_negative;
+                    } else if 0.5 < axis_value {
+                        self.input |= mask_for_positive;
+                    }
+                }
+            }
+        }
+        for GamepadButton(gamepad, button_type) in buttons.get_pressed() {
+            match button_type {
+                GamepadButtonType::DPadUp => self.navigate_up(),
+                GamepadButtonType::DPadDown => self.navigate_down(),
+                GamepadButtonType::DPadLeft => self.navigate_left(),
+                GamepadButtonType::DPadRight => self.navigate_right(),
+                GamepadButtonType::South | GamepadButtonType::Start => {
+                    if buttons.just_pressed(GamepadButton(*gamepad, *button_type)) {
+                        self.input |= INPUT_MASK_ACTIVATE;
+                    }
+                }
                 _ => (),
             }
         }
@@ -54,7 +98,8 @@ struct NodeData {
 pub struct Kbgp {
     nodes: HashMap<egui::Id, NodeData>,
     move_focus: Option<egui::Id>,
-    prev_direction_input: u8,
+    activate: Option<egui::Id>,
+    prev_input: u8,
     next_navigation: f64,
 }
 
@@ -69,47 +114,51 @@ impl Kbgp {
             node_data.still_there = false;
         }
         self.move_focus = None;
+        self.activate = None;
 
         let mut handle = KbgpPrepareHandle {
             secs_after_first_movement: 0.5,
             secs_between_movements: 0.1,
-            direction_input: 0,
+            input: 0,
         };
 
         prepare_dlg(&mut handle);
-        if handle.direction_input != 0 {
-            let mut effective_direction_input = handle.direction_input;
+        if handle.input != 0 {
+            if handle.input & INPUT_MASK_ACTIVATE != 0 {
+                self.activate = egui_ctx.memory().focus();
+            }
+            let mut effective_input = handle.input;
             let current_time = egui_ctx.input().time;
-            if self.prev_direction_input != handle.direction_input {
-                effective_direction_input &= !self.prev_direction_input;
+            if self.prev_input != handle.input {
+                effective_input &= !self.prev_input;
                 self.next_navigation = current_time + handle.secs_after_first_movement;
             } else if current_time < self.next_navigation {
-                effective_direction_input = 0;
+                effective_input = 0;
             } else {
                 self.next_navigation = current_time + handle.secs_between_movements;
             }
-            match effective_direction_input & DIRECTION_MASK_VERTICAL {
-                DIRECTION_MASK_UP => {
+            match effective_input & INPUT_MASK_VERTICAL {
+                INPUT_MASK_UP => {
                     self.move_focus(egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 { x: -x, y: -y });
                 }
-                DIRECTION_MASK_DOWN => {
+                INPUT_MASK_DOWN => {
                     self.move_focus(egui_ctx, |p| p);
                 }
                 _ => {}
             }
             // Note: Doing transpose instead of rotation so that starting navigation without
             // anything focused will make left similar to up and right similar to down.
-            match effective_direction_input & DIRECTION_MASK_HORIZONTAL {
-                DIRECTION_MASK_LEFT => {
+            match effective_input & INPUT_MASK_HORIZONTAL {
+                INPUT_MASK_LEFT => {
                     self.move_focus(egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 { x: -y, y: -x });
                 }
-                DIRECTION_MASK_RIGHT => {
+                INPUT_MASK_RIGHT => {
                     self.move_focus(egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 { x: y, y: x });
                 }
                 _ => {}
             }
         }
-        self.prev_direction_input = handle.direction_input;
+        self.prev_input = handle.input;
     }
 
     pub fn move_focus(
@@ -208,6 +257,7 @@ impl Kbgp {
 
 pub trait KbgpEguiResponseExt {
     fn kbgp_navigation(self, kbgp: &mut Kbgp) -> Self;
+    fn kbgp_activated(self, kbgp: &Kbgp) -> bool;
 }
 
 impl KbgpEguiResponseExt for egui::Response {
@@ -223,5 +273,9 @@ impl KbgpEguiResponseExt for egui::Response {
             },
         );
         self
+    }
+
+    fn kbgp_activated(self, kbgp: &Kbgp) -> bool {
+        self.clicked() || Some(self.id) == kbgp.activate
     }
 }
