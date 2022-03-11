@@ -29,6 +29,8 @@ jobs:
       - name: Ready cache
         if: matrix.os == 'ubuntu-latest'
         run: sudo chown -R $(whoami):$(id -ng) ~/.cargo/
+      - name: Install dependencies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev
       - name: Cache cargo
         uses: actions/cache@v1
         id: cache
@@ -116,9 +118,6 @@ jobs:
           target: wasm32-unknown-unknown
           toolchain: nightly
           override: true
-      #- name: Install packages for WASM
-        #run: |-
-          #cargo install wasm-bindgen-cli
       - name: Build docs
         env:
           GITHUB_REPO: ${{ github.repository }}
@@ -133,7 +132,7 @@ jobs:
           <html lang="en-us">
               <head>
                   <script type="module">
-                      import init from './$demowasm';
+                      import init from './${demowasm$.*}.js';
                       var res = await init();
                       res.start();
                   </script>
