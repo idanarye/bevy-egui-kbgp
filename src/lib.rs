@@ -268,7 +268,10 @@ pub trait KbgpEguiResponseExt {
 impl KbgpEguiResponseExt for egui::Response {
     fn kbgp_initial_focus(self, kbgp: &mut Kbgp) -> Self {
         if let Some(data) = kbgp.nodes.get(&self.id) {
-            assert!(!data.still_there, "kbgp_navigation called before kbgp_initial_focus");
+            assert!(
+                !data.still_there,
+                "kbgp_navigation called before kbgp_initial_focus"
+            );
         } else {
             self.request_focus();
         }

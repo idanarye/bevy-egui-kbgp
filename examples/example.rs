@@ -11,6 +11,7 @@ fn main() {
         .run();
 }
 
+#[allow(clippy::too_many_arguments)]
 fn ui_system(
     mut egui_context: ResMut<EguiContext>,
     mut kbgp: Local<Kbgp>,
@@ -27,20 +28,34 @@ fn ui_system(
         prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
     });
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
-        ui.button("Holds focus on startup").kbgp_initial_focus(&mut kbgp).kbgp_navigation(&mut kbgp);
+        ui.button("Holds focus on startup")
+            .kbgp_initial_focus(&mut kbgp)
+            .kbgp_navigation(&mut kbgp);
         ui.horizontal(|ui| {
             for counter in button_counters.iter_mut() {
-                if ui.button(format!("Counter: {counter}")).kbgp_navigation(&mut kbgp).kbgp_activated(&mut kbgp) {
+                if ui
+                    .button(format!("Counter: {counter}"))
+                    .kbgp_navigation(&mut kbgp)
+                    .kbgp_activated(&kbgp)
+                {
                     *counter += 1;
                 }
             }
         });
-        if ui.checkbox(&mut checkbox_value.clone(), "Checkbox").kbgp_navigation(&mut kbgp).kbgp_activated(&mut kbgp) {
+        if ui
+            .checkbox(&mut checkbox_value.clone(), "Checkbox")
+            .kbgp_navigation(&mut kbgp)
+            .kbgp_activated(&kbgp)
+        {
             *checkbox_value = !*checkbox_value;
         }
         ui.horizontal(|ui| {
             for i in 0..4 {
-                if ui.selectable_label(*label_value == i, format!("Value {i}")).kbgp_navigation(&mut kbgp).kbgp_activated(&mut kbgp) {
+                if ui
+                    .selectable_label(*label_value == i, format!("Value {i}"))
+                    .kbgp_navigation(&mut kbgp)
+                    .kbgp_activated(&kbgp)
+                {
                     *label_value = i;
                 }
             }
