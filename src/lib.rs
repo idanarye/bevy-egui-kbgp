@@ -33,6 +33,10 @@ impl KbgpPrepareHandle {
         self.input |= INPUT_MASK_RIGHT;
     }
 
+    pub fn activate_focused(&mut self) {
+        self.input |= INPUT_MASK_ACTIVATE;
+    }
+
     pub fn navigate_keyboard_default(&mut self, keys: &Input<KeyCode>) {
         for key in keys.get_pressed() {
             match key {
@@ -71,16 +75,14 @@ impl KbgpPrepareHandle {
                 }
             }
         }
-        for GamepadButton(gamepad, button_type) in buttons.get_pressed() {
+        for GamepadButton(_, button_type) in buttons.get_pressed() {
             match button_type {
                 GamepadButtonType::DPadUp => self.navigate_up(),
                 GamepadButtonType::DPadDown => self.navigate_down(),
                 GamepadButtonType::DPadLeft => self.navigate_left(),
                 GamepadButtonType::DPadRight => self.navigate_right(),
                 GamepadButtonType::South | GamepadButtonType::Start => {
-                    if buttons.just_pressed(GamepadButton(*gamepad, *button_type)) {
-                        self.input |= INPUT_MASK_ACTIVATE;
-                    }
+                    self.activate_focused();
                 }
                 _ => (),
             }
@@ -117,16 +119,13 @@ impl Kbgp {
         self.activate = None;
 
         let mut handle = KbgpPrepareHandle {
-            secs_after_first_movement: 0.5,
-            secs_between_movements: 0.1,
+            secs_after_first_movement: 0.6,
+            secs_between_movements: 0.04,
             input: 0,
         };
 
         prepare_dlg(&mut handle);
         if handle.input != 0 {
-            if handle.input & INPUT_MASK_ACTIVATE != 0 {
-                self.activate = egui_ctx.memory().focus();
-            }
             let mut effective_input = handle.input;
             let current_time = egui_ctx.input().time;
             if self.prev_input != handle.input {
@@ -137,6 +136,11 @@ impl Kbgp {
             } else {
                 self.next_navigation = current_time + handle.secs_between_movements;
             }
+
+            if effective_input & INPUT_MASK_ACTIVATE != 0 {
+                self.activate = egui_ctx.memory().focus();
+            }
+
             match effective_input & INPUT_MASK_VERTICAL {
                 INPUT_MASK_UP => {
                     self.move_focus(egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 { x: -x, y: -y });
@@ -256,13 +260,23 @@ impl Kbgp {
 }
 
 pub trait KbgpEguiResponseExt {
+    fn kbgp_initial_focus(self, kbgp: &mut Kbgp) -> Self;
     fn kbgp_navigation(self, kbgp: &mut Kbgp) -> Self;
     fn kbgp_activated(self, kbgp: &Kbgp) -> bool;
 }
 
 impl KbgpEguiResponseExt for egui::Response {
+    fn kbgp_initial_focus(self, kbgp: &mut Kbgp) -> Self {
+        if let Some(data) = kbgp.nodes.get(&self.id) {
+            assert!(!data.still_there, "kbgp_navigation called before kbgp_initial_focus");
+        } else {
+            self.request_focus();
+        }
+        self
+    }
+
     fn kbgp_navigation(self, kbgp: &mut Kbgp) -> Self {
-        if Some(self.id) == kbgp.move_focus {
+        if Some(self.id) == kbgp.move_focus || self.clicked() {
             self.request_focus();
         }
         kbgp.nodes.insert(
