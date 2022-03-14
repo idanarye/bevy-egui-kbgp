@@ -6,9 +6,12 @@
 
 [egui](https://github.com/emilk/egui) is an immediate mode GUI framework, that can be used inside the [Bevy game engine](https://bevyengine.org/) with [the bevy_egui crate](https://github.com/mvlabat/bevy_egui).
 
-egui is very mouse-oriented, and while it does support tab-navigation, game menus should be navigatable by the arrow keys (and/or by WASD) and by gamepads.
+egui is very mouse-oriented, and while it does support tab-navigation, game menus should be
+navigatable by the arrow keys (and/or by WASD) and by gamepads.
 
-This is where the bevy-egui-kbgp crate comes in. It allows to navigate egui widgets using the keyboard's arrow keys and using a gamepad's dpad and left joystick (by default - all the controls can be redfined). It also allows activating these buttons from the gamepad.
+This is where the bevy-egui-kbgp crate comes in. It allows to navigate egui widgets using the
+keyboard's arrow keys and using a gamepad's d-pad and left joystick (by default - all the controls
+can be redfined). It also allows activating these buttons from the gamepad.
 
 See a demo: https://idanarye.github.io/bevy-egui-kbgp/demos/example
 

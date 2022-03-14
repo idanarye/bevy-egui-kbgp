@@ -29,7 +29,7 @@ fn ui_system(
     });
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
         ui.button("Holds focus on startup")
-            .kbgp_initial_focus(&mut kbgp)
+            .kbgp_initial_focus(&kbgp)
             .kbgp_navigation(&mut kbgp);
         ui.horizontal(|ui| {
             for counter in button_counters.iter_mut() {

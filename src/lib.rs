@@ -10,33 +10,69 @@ const INPUT_MASK_HORIZONTAL: u8 = INPUT_MASK_LEFT | INPUT_MASK_RIGHT;
 
 const INPUT_MASK_ACTIVATE: u8 = 16;
 
+/// Object used to configure KBGP's behavior in [`Kbgp::prepare`](crate::Kbgp::prepare).
 pub struct KbgpPrepareHandle {
-    pub secs_after_first_movement: f64,
-    pub secs_between_movements: f64,
+    /// When the user holds a key/button, KBGP will wait `secs_after_first_input` seconds before
+    /// starting to rapidly apply the action.
+    ///
+    /// Default: 0.6 seconds.
+    pub secs_after_first_input: f64,
+    /// When the user holds a key/button, after
+    /// [`secs_after_first_input`](crate::KbgpPrepareHandle::secs_after_first_input), KBGP
+    /// will apply the action every `secs_between_inputs` seconds.
+    ///
+    /// Default: 0.04 seconds.
+    pub secs_between_inputs: f64,
     input: u8,
 }
 
 impl KbgpPrepareHandle {
+    /// Move the focus one widget up. If no widget has the focus - move up from the bottom.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
     pub fn navigate_up(&mut self) {
         self.input |= INPUT_MASK_UP;
     }
 
+    /// Move the focus one widget down. If no widget has the focus - move down from the top.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
     pub fn navigate_down(&mut self) {
         self.input |= INPUT_MASK_DOWN;
     }
 
+    /// Move the focus one widget left. If no widget has the focus - move left from the right.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
     pub fn navigate_left(&mut self) {
         self.input |= INPUT_MASK_LEFT;
     }
 
+    /// Move the focus one widget right. If no widget has the focus - move right from the left.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
     pub fn navigate_right(&mut self) {
         self.input |= INPUT_MASK_RIGHT;
     }
 
+    /// Activate the currently focused widget.
+    ///
+    /// Will only work if the widget's activation is checked with
+    /// [`kbgp_activated`](crate::KbgpEguiResponseExt::kbgp_activated). Cannot affect egui's
+    /// standard `clicked`.
     pub fn activate_focused(&mut self) {
         self.input |= INPUT_MASK_ACTIVATE;
     }
 
+    /// Navigate the UI with arrow keys.
     pub fn navigate_keyboard_default(&mut self, keys: &Input<KeyCode>) {
         for key in keys.get_pressed() {
             match key {
@@ -49,6 +85,10 @@ impl KbgpPrepareHandle {
         }
     }
 
+    /// Navigate the UI with gamepads.
+    ///
+    /// * Use both left stick and d-pad for navigation.
+    /// * Use both the south button and the start button for activation.
     pub fn navigate_gamepad_default(
         &mut self,
         gamepads: &Gamepads,
@@ -96,6 +136,11 @@ struct NodeData {
     still_there: bool,
 }
 
+/// KBGP's state holder:
+///
+/// * Must be preserved between frames - usually with a `Local` resource.
+/// * [`prepare`](crate::Kbgp::prepare) must be called each frame, before drawing the GUI.
+/// * Must be passed as a reference to [the `Response` extension methods](crate::KbgpEguiResponseExt).
 #[derive(Default)]
 pub struct Kbgp {
     nodes: HashMap<egui::Id, NodeData>,
@@ -106,6 +151,37 @@ pub struct Kbgp {
 }
 
 impl Kbgp {
+    /// Must be called every frame, before drawing.
+    ///
+    /// The `prepare_dlg` argument is a closure that accepts a
+    /// [`KbgpPrepareHandle`](crate::KbgpPrepareHandle), and used to:
+    ///
+    /// * Register the input from the keyboard and the gamepads.
+    /// * Set preferences.
+    ///
+    /// Typical usage:
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
+    /// # use bevy_egui_kbgp::Kbgp;
+    /// fn ui_system(
+    ///     mut egui_context: ResMut<EguiContext>,
+    ///     mut kbgp: Local<Kbgp>,
+    ///     keys: Res<Input<KeyCode>>,
+    ///     gamepads: Res<Gamepads>,
+    ///     gamepad_axes: Res<Axis<GamepadAxis>>,
+    ///     gamepad_buttons: Res<Input<GamepadButton>>,
+    /// ) {
+    ///     kbgp.prepare(egui_context.ctx_mut(), |prp| {
+    ///         prp.navigate_keyboard_default(&keys);
+    ///         prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+    ///     });
+    ///     // ... draw the UI with egui ...
+    /// }
+    /// ```
+
+
     pub fn prepare(
         &mut self,
         egui_ctx: &egui::CtxRef,
@@ -119,8 +195,8 @@ impl Kbgp {
         self.activate = None;
 
         let mut handle = KbgpPrepareHandle {
-            secs_after_first_movement: 0.6,
-            secs_between_movements: 0.04,
+            secs_after_first_input: 0.6,
+            secs_between_inputs: 0.04,
             input: 0,
         };
 
@@ -130,11 +206,11 @@ impl Kbgp {
             let current_time = egui_ctx.input().time;
             if self.prev_input != handle.input {
                 effective_input &= !self.prev_input;
-                self.next_navigation = current_time + handle.secs_after_first_movement;
+                self.next_navigation = current_time + handle.secs_after_first_input;
             } else if current_time < self.next_navigation {
                 effective_input = 0;
             } else {
-                self.next_navigation = current_time + handle.secs_between_movements;
+                self.next_navigation = current_time + handle.secs_between_inputs;
             }
 
             if effective_input & INPUT_MASK_ACTIVATE != 0 {
@@ -165,7 +241,7 @@ impl Kbgp {
         self.prev_input = handle.input;
     }
 
-    pub fn move_focus(
+    fn move_focus(
         &mut self,
         egui_ctx: &egui::CtxRef,
         transform_pos_downward: impl Fn(egui::Pos2) -> egui::Pos2,
@@ -259,14 +335,35 @@ impl Kbgp {
     }
 }
 
+/// Extensions for egui's `Response` to activate KBGP's functionality.
+///
+/// ```no_run
+/// # use bevy::prelude::*;
+/// # use bevy_egui_kbgp::{Kbgp, KbgpEguiResponseExt};
+/// # let ui: egui::Ui = todo!();
+/// # let mut kbgp: Kbgp = todo!();
+/// if ui
+///     .button("My Button")
+///     .kbgp_initial_focus(&kbgp) // focus on this button when starting the UI
+///     .kbgp_navigation(&mut kbgp) // navigate to and from this button with keyboard/gamepad
+///     .kbgp_activated(&kbgp) // use instead of egui's `.clicked()` to support gamepads
+/// {
+///     // ...
+/// }
+/// ```
 pub trait KbgpEguiResponseExt {
-    fn kbgp_initial_focus(self, kbgp: &mut Kbgp) -> Self;
+    /// When the UI is first created, focus on this widget.
+    ///
+    /// Must be called before [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation).
+    fn kbgp_initial_focus(self, kbgp: &Kbgp) -> Self;
+    /// Navigate to and from this widget.
     fn kbgp_navigation(self, kbgp: &mut Kbgp) -> Self;
+    /// Use instead of egui's `.clicked()` to support gamepads.
     fn kbgp_activated(self, kbgp: &Kbgp) -> bool;
 }
 
 impl KbgpEguiResponseExt for egui::Response {
-    fn kbgp_initial_focus(self, kbgp: &mut Kbgp) -> Self {
+    fn kbgp_initial_focus(self, kbgp: &Kbgp) -> Self {
         if let Some(data) = kbgp.nodes.get(&self.id) {
             assert!(
                 !data.still_there,
