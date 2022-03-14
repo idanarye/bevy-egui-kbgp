@@ -1,3 +1,49 @@
+//! Improve the keyboard and gamepads usage for egui in Bevy.
+//!
+//! Place a [`Kbgp`](crate::Kbgp) from inside a `Local` resource to maintain state. Call its
+//! [`prepare`](crate::Kbgp::prepare) each frame to pass the input (and possibly set parameters).
+//! Use [the extension methods](crate::KbgpEguiResponseExt) on the egui widgets to add KBGP's
+//! functionality.
+//!
+//! ```no_run
+//! # use bevy::prelude::*;
+//! # use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
+//! # use bevy_egui_kbgp::prelude::*;
+//! fn ui_system(
+//!     mut egui_context: ResMut<EguiContext>,
+//!     mut kbgp: Local<Kbgp>,
+//!     keys: Res<Input<KeyCode>>,
+//!     gamepads: Res<Gamepads>,
+//!     gamepad_axes: Res<Axis<GamepadAxis>>,
+//!     gamepad_buttons: Res<Input<GamepadButton>>,
+//! ) {
+//!     kbgp.prepare(egui_context.ctx_mut(), |prp| {
+//!         prp.navigate_keyboard_default(&keys);
+//!         prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+//!     });
+//!
+//!
+//!     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+//!         if ui
+//!             .button("First Button")
+//!             .kbgp_initial_focus(&kbgp)
+//!             .kbgp_navigation(&mut kbgp)
+//!             .kbgp_activated(&kbgp)
+//!         {
+//!             // First button action
+//!         }
+//!
+//!         if ui
+//!             .button("Second Button")
+//!             .kbgp_navigation(&mut kbgp)
+//!             .kbgp_activated(&kbgp)
+//!         {
+//!             // Second button action
+//!         }
+//!     });
+//! }
+//! ```
+
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 

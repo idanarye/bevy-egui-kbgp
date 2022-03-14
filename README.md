@@ -13,7 +13,7 @@ This is where the bevy-egui-kbgp crate comes in. It allows to navigate egui widg
 keyboard's arrow keys and using a gamepad's d-pad and left joystick (by default - all the controls
 can be redfined). It also allows activating these buttons from the gamepad.
 
-See a demo: https://idanarye.github.io/bevy-egui-kbgp/demos/example
+Try it out in https://idanarye.github.io/bevy-egui-kbgp/demos/example
 
 ## Features
 
@@ -27,6 +27,17 @@ See a demo: https://idanarye.github.io/bevy-egui-kbgp/demos/example
 * Support for comboboxes (if I can figure out how to)
 * Key assignment widgets.
 * Figure out how to support navigating out of textboxes.
+
+## Versions
+
+| bevy | egui | bevy_egui* | bevy-egui-kbgp |
+|------|------|------------|----------------|
+| 0.6  | 0.16 | 0.11.1     | 0.1            |
+
+* Technically bevy_egui is not requirement of bevy-egui-kbgp, but without a way to run egui inside
+  Bevy bevy-egui-kbgp is useless. This is the version of bevy_egui this plugin is tested with, but
+  any other version of bevy_egui will work - provided that it uses the same versions of bevy and
+  egui as bevy-egui-kbgp.
 
 ## License
 
