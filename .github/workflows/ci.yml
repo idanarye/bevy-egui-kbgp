@@ -67,6 +67,8 @@ jobs:
           toolchain: nightly
           override: true
           components: clippy
+      - name: Install dependencies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libudev-dev
       - name: Cache cargo
         uses: actions/cache@v1
         id: cache
@@ -88,6 +90,8 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+      - name: Install dependencies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libudev-dev
       - name: Cache cargo
         uses: actions/cache@v1
         id: cache
