@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
+pub mod prelude {
+    pub use crate::Kbgp;
+    pub use crate::KbgpEguiResponseExt;
+}
+
 const INPUT_MASK_UP: u8 = 1;
 const INPUT_MASK_DOWN: u8 = 2;
 const INPUT_MASK_VERTICAL: u8 = INPUT_MASK_UP | INPUT_MASK_DOWN;
@@ -164,7 +169,7 @@ impl Kbgp {
     /// ```no_run
     /// # use bevy::prelude::*;
     /// # use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
-    /// # use bevy_egui_kbgp::Kbgp;
+    /// # use bevy_egui_kbgp::prelude::*;
     /// fn ui_system(
     ///     mut egui_context: ResMut<EguiContext>,
     ///     mut kbgp: Local<Kbgp>,
@@ -180,7 +185,6 @@ impl Kbgp {
     ///     // ... draw the UI with egui ...
     /// }
     /// ```
-
 
     pub fn prepare(
         &mut self,
@@ -339,7 +343,7 @@ impl Kbgp {
 ///
 /// ```no_run
 /// # use bevy::prelude::*;
-/// # use bevy_egui_kbgp::{Kbgp, KbgpEguiResponseExt};
+/// # use bevy_egui_kbgp::prelude::*;
 /// # let ui: egui::Ui = todo!();
 /// # let mut kbgp: Kbgp = todo!();
 /// if ui

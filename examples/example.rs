@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
-use bevy_egui_kbgp::{Kbgp, KbgpEguiResponseExt};
+use bevy_egui_kbgp::prelude::*;
 
 fn main() {
     App::new()
