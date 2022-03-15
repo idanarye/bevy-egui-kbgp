@@ -23,21 +23,15 @@ Try it out in https://idanarye.github.io/bevy-egui-kbgp/demos/example
 
 ## Planned features
 
-* Better ergomnomics (if I can figure out how to)
-* Support for comboboxes (if I can figure out how to)
+* Support for comboboxes.
 * Key assignment widgets.
 * Figure out how to support navigating out of textboxes.
 
 ## Versions
 
-| bevy | egui | bevy_egui* | bevy-egui-kbgp |
+| bevy | egui | bevy_egui | bevy-egui-kbgp |
 |------|------|------------|----------------|
 | 0.6  | 0.16 | 0.11.1     | 0.1            |
-
-* Technically bevy_egui is not requirement of bevy-egui-kbgp, but without a way to run egui inside
-  Bevy bevy-egui-kbgp is useless. This is the version of bevy_egui this plugin is tested with, but
-  any other version of bevy_egui will work - provided that it uses the same versions of bevy and
-  egui as bevy-egui-kbgp.
 
 ## License
 

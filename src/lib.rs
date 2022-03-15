@@ -11,32 +11,22 @@
 //! # use bevy_egui_kbgp::prelude::*;
 //! fn ui_system(
 //!     mut egui_context: ResMut<EguiContext>,
-//!     mut kbgp: Local<Kbgp>,
 //!     keys: Res<Input<KeyCode>>,
-//!     gamepads: Res<Gamepads>,
-//!     gamepad_axes: Res<Axis<GamepadAxis>>,
-//!     gamepad_buttons: Res<Input<GamepadButton>>,
 //! ) {
-//!     kbgp.prepare(egui_context.ctx_mut(), |prp| {
-//!         prp.navigate_keyboard_default(&keys);
-//!         prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
-//!     });
-//!
-//!
 //!     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
 //!         if ui
 //!             .button("First Button")
-//!             .kbgp_initial_focus(&kbgp)
-//!             .kbgp_navigation(&mut kbgp)
-//!             .kbgp_activated(&kbgp)
+//!             .kbgp_initial_focus()
+//!             .kbgp_navigation()
+//!             .kbgp_activated()
 //!         {
 //!             // First button action
 //!         }
 //!
 //!         if ui
 //!             .button("Second Button")
-//!             .kbgp_navigation(&mut kbgp)
-//!             .kbgp_activated(&kbgp)
+//!             .kbgp_navigation()
+//!             .kbgp_activated()
 //!         {
 //!             // Second button action
 //!         }
@@ -46,10 +36,12 @@
 
 use bevy::prelude::*;
 use bevy::utils::HashMap;
+use bevy_egui::EguiContext;
 
 pub mod prelude {
     pub use crate::Kbgp;
     pub use crate::KbgpEguiResponseExt;
+    pub use crate::kbgp_system_default_input;
 }
 
 const INPUT_MASK_UP: u8 = 1;
@@ -394,9 +386,9 @@ impl Kbgp {
 /// # let mut kbgp: Kbgp = todo!();
 /// if ui
 ///     .button("My Button")
-///     .kbgp_initial_focus(&kbgp) // focus on this button when starting the UI
-///     .kbgp_navigation(&mut kbgp) // navigate to and from this button with keyboard/gamepad
-///     .kbgp_activated(&kbgp) // use instead of egui's `.clicked()` to support gamepads
+///     .kbgp_initial_focus() // focus on this button when starting the UI
+///     .kbgp_navigation() // navigate to and from this button with keyboard/gamepad
+///     .kbgp_activated() // use instead of egui's `.clicked()` to support gamepads
 /// {
 ///     // ...
 /// }
@@ -405,41 +397,76 @@ pub trait KbgpEguiResponseExt {
     /// When the UI is first created, focus on this widget.
     ///
     /// Must be called before [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation).
-    fn kbgp_initial_focus(self, kbgp: &Kbgp) -> Self;
+    fn kbgp_initial_focus(self) -> Self;
     /// Navigate to and from this widget.
-    fn kbgp_navigation(self, kbgp: &mut Kbgp) -> Self;
+    fn kbgp_navigation(self) -> Self;
     /// Use instead of egui's `.clicked()` to support gamepads.
-    fn kbgp_activated(self, kbgp: &Kbgp) -> bool;
+    fn kbgp_activated(self) -> bool;
 }
 
 impl KbgpEguiResponseExt for egui::Response {
-    fn kbgp_initial_focus(self, kbgp: &Kbgp) -> Self {
-        if let Some(data) = kbgp.nodes.get(&self.id) {
-            assert!(
-                !data.still_there,
-                "kbgp_navigation called before kbgp_initial_focus"
+    fn kbgp_initial_focus(self) -> Self {
+        if let Some(kbgp) = kbgp_get(&self.ctx) {
+            let kbgp = kbgp.lock();
+            if let Some(data) = kbgp.nodes.get(&self.id) {
+                assert!(
+                    !data.still_there,
+                    "kbgp_navigation called before kbgp_initial_focus"
+                );
+            } else {
+                self.request_focus();
+            }
+        }
+        self
+    }
+
+    fn kbgp_navigation(self) -> Self {
+        if let Some(kbgp) = kbgp_get(&self.ctx) {
+            let mut kbgp = kbgp.lock();
+            if Some(self.id) == kbgp.move_focus || self.clicked() {
+                self.request_focus();
+            }
+            kbgp.nodes.insert(
+                self.id,
+                NodeData {
+                    rect: self.rect,
+                    still_there: true,
+                },
             );
+        }
+        self
+    }
+
+    fn kbgp_activated(self) -> bool {
+        if let Some(kbgp) = kbgp_get(&self.ctx) {
+            let kbgp = kbgp.lock();
+            self.clicked() || Some(self.id) == kbgp.activate
         } else {
-            self.request_focus();
+            self.clicked()
         }
-        self
-    }
-
-    fn kbgp_navigation(self, kbgp: &mut Kbgp) -> Self {
-        if Some(self.id) == kbgp.move_focus || self.clicked() {
-            self.request_focus();
-        }
-        kbgp.nodes.insert(
-            self.id,
-            NodeData {
-                rect: self.rect,
-                still_there: true,
-            },
-        );
-        self
-    }
-
-    fn kbgp_activated(self, kbgp: &Kbgp) -> bool {
-        self.clicked() || Some(self.id) == kbgp.activate
     }
 }
+
+fn kbgp_get(egui_ctx: &egui::CtxRef) -> Option<std::sync::Arc<egui::mutex::Mutex<Kbgp>>> {
+    egui_ctx.memory().data.get_temp::<std::sync::Arc<egui::mutex::Mutex<Kbgp>>>(egui::Id::null()).clone()
+}
+
+pub fn kbgp_prepare(egui_ctx: &egui::CtxRef, prepare_dlg: impl FnOnce(&mut KbgpPrepareHandle)) {
+    let kbgp = egui_ctx.memory().data.get_temp_mut_or_default::<std::sync::Arc<egui::mutex::Mutex<Kbgp>>>(egui::Id::null()).clone();
+    let mut kbgp = kbgp.lock();
+    kbgp.prepare(egui_ctx, prepare_dlg);
+}
+
+pub fn kbgp_system_default_input(
+    mut egui_context: ResMut<EguiContext>,
+    keys: Res<Input<KeyCode>>,
+    gamepads: Res<Gamepads>,
+    gamepad_axes: Res<Axis<GamepadAxis>>,
+    gamepad_buttons: Res<Input<GamepadButton>>,
+) {
+    kbgp_prepare(egui_context.ctx_mut(), |prp| {
+        prp.navigate_keyboard_default(&keys);
+        prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+    });
+}
+

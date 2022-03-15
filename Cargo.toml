@@ -11,7 +11,7 @@ repository = "https://github.com/idanarye/bevy-egui-kbgp"
 [dependencies]
 bevy = { version = "0.6.1", default-features = false }
 egui = "0.16"
+bevy_egui = "0.11.1"
 
 [dev-dependencies]
 bevy = { default-features = false, features = ["bevy_gilrs"] }
-bevy_egui = "0.11.1"
