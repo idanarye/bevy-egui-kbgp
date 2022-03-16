@@ -203,9 +203,7 @@ impl KbgpNavigationState {
         }
         self.prev_input = handle.input;
     }
-}
 
-impl KbgpNavigationState {
     fn move_focus(
         &mut self,
         common: &KbgpCommon,

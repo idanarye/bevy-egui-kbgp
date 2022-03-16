@@ -47,23 +47,28 @@
 //! ```
 
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 use bevy_egui::EguiContext;
 
 use self::navigation::KbgpNavigationState;
 pub use self::navigation::KbgpPrepareNavigation;
+use self::pending_input::KbgpPendingInputState;
+pub use self::pending_input::KbgpPreparePendingInput;
 
 mod navigation;
+mod pending_input;
 
 pub mod prelude {
     pub use crate::kbgp_prepare;
     pub use crate::kbgp_system_default_input;
     pub use crate::KbgpEguiResponseExt;
+    pub use crate::KbgpInput;
 }
 
 /// Object used to configure KBGP's behavior in [`kbgp_prepare`].
 pub enum KbgpPrepare<'a> {
     Navigation(&'a mut KbgpPrepareNavigation),
+    PendingInput(&'a mut KbgpPreparePendingInput),
 }
 
 impl KbgpPrepare<'_> {
@@ -98,6 +103,10 @@ impl KbgpPrepare<'_> {
             KbgpPrepare::Navigation(prp) => {
                 prp.navigate_keyboard_default(&keys);
                 prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+            }
+            KbgpPrepare::PendingInput(prp) => {
+                prp.accept_keyboard_input(&keys);
+                prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
             }
         }
     }
@@ -145,6 +154,10 @@ fn kbgp_get(egui_ctx: &egui::CtxRef) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>>
 ///                 prp.navigate_keyboard_default(&keys);
 ///                 prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
 ///             }
+///             KbgpPrepare::PendingInput(prp) => {
+///                 prp.accept_keyboard_input(&keys);
+///                 prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
+///             }
 ///         }
 ///     });
 /// }
@@ -169,6 +182,11 @@ pub fn kbgp_prepare(egui_ctx: &egui::CtxRef, prepare_dlg: impl FnOnce(KbgpPrepar
         KbgpState::Navigation(state) => {
             state.prepare(common, egui_ctx, |prp| {
                 prepare_dlg(KbgpPrepare::Navigation(prp))
+            });
+        }
+        KbgpState::PendingInput(state) => {
+            state.prepare(common, egui_ctx, |prp| {
+                prepare_dlg(KbgpPrepare::PendingInput(prp))
             });
         }
     }
@@ -203,6 +221,7 @@ struct KbgpCommon {
 enum KbgpState {
     Inactive,
     Navigation(KbgpNavigationState),
+    PendingInput(KbgpPendingInputState),
 }
 
 impl Default for KbgpState {
@@ -241,6 +260,10 @@ pub trait KbgpEguiResponseExt {
     fn kbgp_navigation(self) -> Self;
     /// Use instead of egui's `.clicked()` to support gamepads.
     fn kbgp_activated(self) -> bool;
+
+    fn kbgp_pending_input(&self) -> Option<KbgpInput>;
+    fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
+    fn kbgp_pending_chord_limited(&self, limit: usize) -> Option<HashSet<KbgpInput>>;
 }
 
 impl KbgpEguiResponseExt for egui::Response {
@@ -252,6 +275,7 @@ impl KbgpEguiResponseExt for egui::Response {
                 self.request_focus();
             }
             KbgpState::Navigation(_) => {}
+            KbgpState::PendingInput(_) => {}
         }
         self
     }
@@ -273,6 +297,7 @@ impl KbgpEguiResponseExt for egui::Response {
                     self.request_focus();
                 }
             }
+            KbgpState::PendingInput(_) => {}
         }
         self
     }
@@ -283,6 +308,110 @@ impl KbgpEguiResponseExt for egui::Response {
         match &kbgp.state {
             KbgpState::Inactive => self.clicked(),
             KbgpState::Navigation(state) => self.clicked() || Some(self.id) == state.activate,
+            KbgpState::PendingInput(_) => self.clicked(),
         }
+    }
+
+    fn kbgp_pending_input(&self) -> Option<KbgpInput> {
+        self.kbgp_pending_chord_limited(1).map(|chord| {
+            let mut it = chord.into_iter();
+            let single_input = it
+                .next()
+                .expect("Pending input is finished but received_input is empty");
+            assert!(
+                it.next().is_none(),
+                "More than one input in chord, but limit is 1"
+            );
+            single_input
+        })
+    }
+
+    fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>> {
+        self.kbgp_pending_chord_limited(usize::MAX)
+    }
+
+    fn kbgp_pending_chord_limited(&self, limit: usize) -> Option<HashSet<KbgpInput>> {
+        let kbgp = kbgp_get(&self.ctx);
+        let mut kbgp = kbgp.lock();
+        match &kbgp.state {
+            KbgpState::Inactive => None,
+            KbgpState::Navigation(state) => {
+                if self.clicked() || Some(self.id) == state.activate {
+                    kbgp.state = KbgpState::PendingInput(KbgpPendingInputState {
+                        acceptor_id: self.id,
+                        ignored_input: None,
+                        received_input: Default::default(),
+                        finished: false,
+                        limit,
+                    });
+                }
+                None
+            }
+            KbgpState::PendingInput(state) => {
+                if state.acceptor_id != self.id {
+                    return None;
+                }
+                self.request_focus();
+                if state.finished {
+                    // let input = state.received_input.iter().next().expect("Pending input is finished but received_input is empty").clone();
+                    let state = std::mem::replace(
+                        &mut kbgp.state,
+                        KbgpState::Navigation(KbgpNavigationState::default()),
+                    );
+                    let state = if let KbgpState::PendingInput(state) = state {
+                        state
+                    } else {
+                        panic!("already verified that the state is PendingInput, but now it isn't?")
+                    };
+                    Some(state.received_input)
+                } else {
+                    self.ctx.memory().lock_focus(self.id, true);
+                    egui::containers::popup::show_tooltip_for(
+                        &self.ctx,
+                        egui::Id::null(),
+                        &self.rect,
+                        |ui| {
+                            // let mut chord_text = String::new();
+                            // for input in state.received_input.iter() {
+                            // use std::fmt::Write;
+                            // write!(&mut chord_text, "{}", input).unwrap();
+                            // }
+                            ui.label(&KbgpInput::format_chord(
+                                state.received_input.iter().cloned(),
+                            ));
+                        },
+                    );
+                    None
+                }
+            }
+        }
+    }
+}
+
+#[derive(Hash, PartialEq, Eq, Debug, Clone)]
+pub enum KbgpInput {
+    Keyboard(KeyCode),
+}
+
+impl core::fmt::Display for KbgpInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KbgpInput::Keyboard(key) => write!(f, "{:?}", key)?,
+        }
+        Ok(())
+    }
+}
+
+impl KbgpInput {
+    pub fn format_chord(chord: impl Iterator<Item = Self>) -> String {
+        let mut chord_text = String::new();
+        for input in chord {
+            use std::fmt::Write;
+            if 0 < chord_text.len() {
+                write!(&mut chord_text, "+").unwrap();
+            }
+            write!(&mut chord_text, "{}", input).unwrap();
+        }
+        chord_text
     }
 }
