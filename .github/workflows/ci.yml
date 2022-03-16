@@ -120,7 +120,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           target: wasm32-unknown-unknown
-          toolchain: nightly
+          toolchain: 1.58.1
           override: true
       - name: Build docs
         env:
