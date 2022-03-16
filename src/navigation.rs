@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{kbgp_get, KbgpCommon, KbgpPrepareHandle, KbgpState, NodeData};
+use crate::KbgpCommon;
 
 const INPUT_MASK_UP: u8 = 1;
 const INPUT_MASK_DOWN: u8 = 2;
@@ -13,13 +13,28 @@ const INPUT_MASK_ACTIVATE: u8 = 16;
 
 #[derive(Default)]
 pub(crate) struct KbgpNavigationState {
-    move_focus: Option<egui::Id>,
-    activate: Option<egui::Id>,
+    pub(crate) move_focus: Option<egui::Id>,
+    pub(crate) activate: Option<egui::Id>,
     prev_input: u8,
     next_navigation: f64,
 }
 
-impl KbgpPrepareHandle {
+pub struct KbgpPrepareNavigation {
+    /// When the user holds a key/button, KBGP will wait `secs_after_first_input` seconds before
+    /// starting to rapidly apply the action.
+    ///
+    /// Default: 0.6 seconds.
+    pub secs_after_first_input: f64,
+    /// When the user holds a key/button, after
+    /// [`secs_after_first_input`](crate::KbgpPrepareNavigation::secs_after_first_input), KBGP
+    /// will apply the action every `secs_between_inputs` seconds.
+    ///
+    /// Default: 0.04 seconds.
+    pub secs_between_inputs: f64,
+    pub(crate) input: u8,
+}
+
+impl KbgpPrepareNavigation {
     /// Move the focus one widget up. If no widget has the focus - move up from the bottom.
     ///
     /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
@@ -114,7 +129,7 @@ impl KbgpPrepareHandle {
                 GamepadButtonType::DPadDown => self.navigate_down(),
                 GamepadButtonType::DPadLeft => self.navigate_left(),
                 GamepadButtonType::DPadRight => self.navigate_right(),
-                GamepadButtonType::South | GamepadButtonType::Start => {
+                GamepadButtonType::South => {
                     self.activate_focused();
                 }
                 _ => (),
@@ -128,12 +143,12 @@ impl KbgpNavigationState {
         &mut self,
         common: &KbgpCommon,
         egui_ctx: &egui::CtxRef,
-        prepare_dlg: impl FnOnce(&mut KbgpPrepareHandle),
+        prepare_dlg: impl FnOnce(&mut KbgpPrepareNavigation),
     ) {
         self.move_focus = None;
         self.activate = None;
 
-        let mut handle = KbgpPrepareHandle {
+        let mut handle = KbgpPrepareNavigation {
             secs_after_first_input: 0.6,
             secs_between_inputs: 0.04,
             input: 0,
@@ -282,76 +297,6 @@ impl KbgpNavigationState {
         };
         if let Some(id) = move_to {
             self.move_focus = Some(*id);
-        }
-    }
-}
-
-/// Extensions for egui's `Response` to activate KBGP's functionality.
-///
-/// ```no_run
-/// # use bevy::prelude::*;
-/// # use bevy_egui_kbgp::prelude::*;
-/// # let ui: egui::Ui = todo!();
-/// if ui
-///     .button("My Button")
-///     .kbgp_initial_focus() // focus on this button when starting the UI
-///     .kbgp_navigation() // navigate to and from this button with keyboard/gamepad
-///     .kbgp_activated() // use instead of egui's `.clicked()` to support gamepads
-/// {
-///     // ...
-/// }
-/// ```
-pub trait KbgpEguiResponseExt {
-    /// When the UI is first created, focus on this widget.
-    ///
-    /// Must be called before [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation).
-    fn kbgp_initial_focus(self) -> Self;
-    /// Navigate to and from this widget.
-    fn kbgp_navigation(self) -> Self;
-    /// Use instead of egui's `.clicked()` to support gamepads.
-    fn kbgp_activated(self) -> bool;
-}
-
-impl KbgpEguiResponseExt for egui::Response {
-    fn kbgp_initial_focus(self) -> Self {
-        let kbgp = kbgp_get(&self.ctx);
-        let kbgp = kbgp.lock();
-        match kbgp.state {
-            KbgpState::Inactive => {
-                self.request_focus();
-            }
-            KbgpState::Navigation(_) => {}
-        }
-        self
-    }
-
-    fn kbgp_navigation(self) -> Self {
-        let kbgp = kbgp_get(&self.ctx);
-        let mut kbgp = kbgp.lock();
-        kbgp.common.nodes.insert(
-            self.id,
-            NodeData {
-                rect: self.rect,
-                stale_counter: 0,
-            },
-        );
-        match &kbgp.state {
-            KbgpState::Inactive => {}
-            KbgpState::Navigation(state) => {
-                if Some(self.id) == state.move_focus || self.clicked() {
-                    self.request_focus();
-                }
-            }
-        }
-        self
-    }
-
-    fn kbgp_activated(self) -> bool {
-        let kbgp = kbgp_get(&self.ctx);
-        let kbgp = kbgp.lock();
-        match &kbgp.state {
-            KbgpState::Inactive => self.clicked(),
-            KbgpState::Navigation(state) => self.clicked() || Some(self.id) == state.activate,
         }
     }
 }
