@@ -27,8 +27,20 @@ impl KbgpPendingInputState {
                 if self.limit <= self.received_input.len() {
                     break;
                 }
-                if !ignored_input.contains(input) {
-                    self.received_input.insert(input.clone());
+                if ignored_input.contains(input) {
+                    continue;
+                }
+                self.received_input.insert(input.clone());
+                match input {
+                    KbgpInput::GamepadAxisPositive(gamepad_axis) => {
+                        self.received_input
+                            .remove(&KbgpInput::GamepadAxisNegative(*gamepad_axis));
+                    }
+                    KbgpInput::GamepadAxisNegative(gamepad_axis) => {
+                        self.received_input
+                            .remove(&KbgpInput::GamepadAxisPositive(*gamepad_axis));
+                    }
+                    _ => {}
                 }
             }
             ignored_input.retain(|input| handle.current_input.contains(input));
@@ -56,9 +68,16 @@ pub struct KbgpPreparePendingInput {
 }
 
 impl KbgpPreparePendingInput {
+    pub fn accept_input(&mut self, input: KbgpInput) {
+        self.current_input.push(input);
+    }
+
+    pub fn accept_inputs(&mut self, inputs: impl Iterator<Item = KbgpInput>) {
+        self.current_input.extend(inputs);
+    }
+
     pub fn accept_keyboard_input(&mut self, keys: &Input<KeyCode>) {
-        self.current_input
-            .extend(keys.get_pressed().copied().map(KbgpInput::Keyboard));
+        self.accept_inputs(keys.get_pressed().copied().map(KbgpInput::Keyboard));
     }
 
     pub fn accept_gamepad_input(
@@ -67,6 +86,28 @@ impl KbgpPreparePendingInput {
         axes: &Axis<GamepadAxis>,
         buttons: &Input<GamepadButton>,
     ) {
-        let _ = (gamepads, axes, buttons);
+        self.accept_inputs(buttons.get_pressed().copied().map(KbgpInput::GamepadButton));
+        for gamepad in gamepads.iter() {
+            for gamepad_axis_type in [
+                GamepadAxisType::LeftStickX,
+                GamepadAxisType::LeftStickY,
+                GamepadAxisType::LeftZ,
+                GamepadAxisType::RightStickX,
+                GamepadAxisType::RightStickY,
+                GamepadAxisType::RightZ,
+                GamepadAxisType::DPadX,
+                GamepadAxisType::DPadY,
+            ] {
+                let gamepad_axis = GamepadAxis(*gamepad, gamepad_axis_type);
+                if let Some(axis_value) = axes.get(gamepad_axis) {
+                    if 0.5 < axis_value {
+                        self.accept_input(KbgpInput::GamepadAxisPositive(gamepad_axis));
+                    } else if axis_value < -0.5 {
+                        self.accept_input(KbgpInput::GamepadAxisNegative(gamepad_axis));
+                    }
+                }
+            }
+        }
+        let _ = (gamepads, axes);
     }
 }

@@ -391,12 +391,24 @@ impl KbgpEguiResponseExt for egui::Response {
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum KbgpInput {
     Keyboard(KeyCode),
+    GamepadAxisPositive(GamepadAxis),
+    GamepadAxisNegative(GamepadAxis),
+    GamepadButton(GamepadButton),
 }
 
 impl core::fmt::Display for KbgpInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             KbgpInput::Keyboard(key) => write!(f, "{:?}", key)?,
+            KbgpInput::GamepadButton(GamepadButton(Gamepad(gamepad), button)) => {
+                write!(f, "[{}]{:?}", gamepad, button)?
+            }
+            KbgpInput::GamepadAxisPositive(GamepadAxis(Gamepad(gamepad), axis)) => {
+                write!(f, "[{}]{:?}", gamepad, axis)?
+            }
+            KbgpInput::GamepadAxisNegative(GamepadAxis(Gamepad(gamepad), axis)) => {
+                write!(f, "[{}]-{:?}", gamepad, axis)?
+            }
         }
         Ok(())
     }
@@ -408,7 +420,7 @@ impl KbgpInput {
         for input in chord {
             use std::fmt::Write;
             if 0 < chord_text.len() {
-                write!(&mut chord_text, "+").unwrap();
+                write!(&mut chord_text, " & ").unwrap();
             }
             write!(&mut chord_text, "{}", input).unwrap();
         }
