@@ -12,7 +12,6 @@
 //! use bevy_egui::{EguiContext, EguiPlugin};
 //! use bevy_egui_kbgp::prelude::*;
 //!
-//! # fn not_main() {
 //! fn main() {
 //!     App::new()
 //!         .add_plugins(DefaultPlugins)
@@ -21,7 +20,6 @@
 //!         .add_system(ui_system)
 //!         .run();
 //! }
-//! # }
 //!
 //! fn ui_system(
 //!     mut egui_context: ResMut<EguiContext>,
