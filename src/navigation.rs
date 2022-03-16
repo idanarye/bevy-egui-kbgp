@@ -332,7 +332,7 @@ impl KbgpEguiResponseExt for egui::Response {
             self.id,
             NodeData {
                 rect: self.rect,
-                still_there: true,
+                stale_counter: 0,
             },
         );
         match &kbgp.state {

@@ -113,9 +113,12 @@ fn kbgp_get(egui_ctx: &egui::CtxRef) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>>
 pub fn kbgp_prepare(egui_ctx: &egui::CtxRef, prepare_dlg: impl FnOnce(&mut KbgpPrepareHandle)) {
     let kbgp = kbgp_get(egui_ctx);
     let mut kbgp = kbgp.lock();
-    kbgp.common.nodes.retain(|_, data| data.still_there);
+    // Since Bevy is allow to reorder systems mid-run, there is a risk that the KBGP prepare system
+    // run twice between egui drawing systems. The stale counter allows up to two such invocations
+    // - after that it assumes the widget is no longer drawn.
+    kbgp.common.nodes.retain(|_, data| data.stale_counter < 2);
     for node_data in kbgp.common.nodes.values_mut() {
-        node_data.still_there = false;
+        node_data.stale_counter += 1;
     }
     let Kbgp { common, state } = &mut *kbgp;
     match state {
@@ -162,5 +165,5 @@ impl Default for KbgpState {
 #[derive(Debug)]
 struct NodeData {
     rect: egui::Rect,
-    still_there: bool,
+    stale_counter: u8,
 }
