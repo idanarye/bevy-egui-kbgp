@@ -53,7 +53,7 @@ use bevy_egui::EguiContext;
 use self::navigation::KbgpNavigationState;
 pub use self::navigation::KbgpPrepareNavigation;
 use self::pending_input::KbgpPendingInputState;
-pub use self::pending_input::KbgpPreparePendingInput;
+pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
 mod navigation;
 mod pending_input;
@@ -261,9 +261,13 @@ pub trait KbgpEguiResponseExt {
     /// Use instead of egui's `.clicked()` to support gamepads.
     fn kbgp_activated(self) -> bool;
 
+    fn kbgp_pending_input_manual<T>(
+        &self,
+        dlg: impl FnOnce(&Self, KbgpInputManualHandle) -> Option<T>,
+    ) -> Option<T>;
+
     fn kbgp_pending_input(&self) -> Option<KbgpInput>;
     fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
-    fn kbgp_pending_chord_limited(&self, limit: usize) -> Option<HashSet<KbgpInput>>;
 }
 
 impl KbgpEguiResponseExt for egui::Response {
@@ -312,38 +316,17 @@ impl KbgpEguiResponseExt for egui::Response {
         }
     }
 
-    fn kbgp_pending_input(&self) -> Option<KbgpInput> {
-        self.kbgp_pending_chord_limited(1).map(|chord| {
-            let mut it = chord.into_iter();
-            let single_input = it
-                .next()
-                .expect("Pending input is finished but received_input is empty");
-            assert!(
-                it.next().is_none(),
-                "More than one input in chord, but limit is 1"
-            );
-            single_input
-        })
-    }
-
-    fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>> {
-        self.kbgp_pending_chord_limited(usize::MAX)
-    }
-
-    fn kbgp_pending_chord_limited(&self, limit: usize) -> Option<HashSet<KbgpInput>> {
+    fn kbgp_pending_input_manual<T>(
+        &self,
+        dlg: impl FnOnce(&Self, KbgpInputManualHandle) -> Option<T>,
+    ) -> Option<T> {
         let kbgp = kbgp_get(&self.ctx);
         let mut kbgp = kbgp.lock();
-        match &kbgp.state {
+        match &mut kbgp.state {
             KbgpState::Inactive => None,
             KbgpState::Navigation(state) => {
                 if self.clicked() || Some(self.id) == state.activate {
-                    kbgp.state = KbgpState::PendingInput(KbgpPendingInputState {
-                        acceptor_id: self.id,
-                        ignored_input: None,
-                        received_input: Default::default(),
-                        finished: false,
-                        limit,
-                    });
+                    kbgp.state = KbgpState::PendingInput(KbgpPendingInputState::new(self.id));
                 }
                 None
             }
@@ -352,39 +335,52 @@ impl KbgpEguiResponseExt for egui::Response {
                     return None;
                 }
                 self.request_focus();
-                if state.finished {
-                    // let input = state.received_input.iter().next().expect("Pending input is finished but received_input is empty").clone();
-                    let state = std::mem::replace(
-                        &mut kbgp.state,
-                        KbgpState::Navigation(KbgpNavigationState::default()),
-                    );
-                    let state = if let KbgpState::PendingInput(state) = state {
-                        state
-                    } else {
-                        panic!("already verified that the state is PendingInput, but now it isn't?")
-                    };
-                    Some(state.received_input)
-                } else {
-                    self.ctx.memory().lock_focus(self.id, true);
-                    egui::containers::popup::show_tooltip_for(
-                        &self.ctx,
-                        egui::Id::null(),
-                        &self.rect,
-                        |ui| {
-                            // let mut chord_text = String::new();
-                            // for input in state.received_input.iter() {
-                            // use std::fmt::Write;
-                            // write!(&mut chord_text, "{}", input).unwrap();
-                            // }
-                            ui.label(&KbgpInput::format_chord(
-                                state.received_input.iter().cloned(),
-                            ));
-                        },
-                    );
-                    None
+                self.ctx.memory().lock_focus(self.id, true);
+                let handle = KbgpInputManualHandle { state };
+                let result = dlg(self, handle);
+                if result.is_some() {
+                    kbgp.state = KbgpState::Navigation(KbgpNavigationState::default());
                 }
+                result
             }
         }
+    }
+
+    fn kbgp_pending_input(&self) -> Option<KbgpInput> {
+        self.kbgp_pending_input_manual(|response, mut hnd| {
+            hnd.process_new_input(|hnd, _| hnd.received_input().is_empty());
+            hnd.show_current_chord(response);
+            if hnd
+                .input_this_frame()
+                .any(|inp| hnd.received_input().contains(&inp))
+            {
+                None
+            } else {
+                let mut it = hnd.received_input().iter();
+                let single_input = it.next();
+                assert!(
+                    it.next().is_none(),
+                    "More than one input in chord, but limit is 1"
+                );
+                // This will not be empty and we'll return a value if and only if there was some
+                // input in received_input.
+                single_input.cloned()
+            }
+        })
+    }
+
+    fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>> {
+        self.kbgp_pending_input_manual(|response, mut hnd| {
+            hnd.process_new_input(|_, _| true);
+            hnd.show_current_chord(response);
+            if hnd.input_this_frame().any(|_| true) {
+                None
+            } else if hnd.received_input().is_empty() {
+                None
+            } else {
+                Some(hnd.received_input().clone())
+            }
+        })
     }
 }
 

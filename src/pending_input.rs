@@ -3,15 +3,73 @@ use bevy::utils::HashSet;
 
 use crate::{KbgpCommon, KbgpInput};
 
+pub struct KbgpInputManualHandle<'a> {
+    pub(crate) state: &'a mut KbgpPendingInputState,
+}
+
+impl<'a> KbgpInputManualHandle<'a> {
+    pub fn input_this_frame(&'a self) -> impl 'a + Iterator<Item = KbgpInput> {
+        self.state.input_this_frame.iter().cloned()
+    }
+
+    pub fn received_input(&self) -> &HashSet<KbgpInput> {
+        &self.state.received_input
+    }
+
+    pub fn process_new_input(&mut self, mut should_add: impl FnMut(&Self, KbgpInput) -> bool) {
+        for input in self.state.input_this_frame.iter() {
+            if should_add(self, input.clone()) {
+                match input {
+                    KbgpInput::GamepadAxisPositive(gamepad_axis) => {
+                        self.state
+                            .received_input
+                            .remove(&KbgpInput::GamepadAxisNegative(*gamepad_axis));
+                    }
+                    KbgpInput::GamepadAxisNegative(gamepad_axis) => {
+                        self.state
+                            .received_input
+                            .remove(&KbgpInput::GamepadAxisPositive(*gamepad_axis));
+                    }
+                    _ => {}
+                }
+                self.state.received_input.insert(input.clone());
+            }
+        }
+    }
+
+    pub fn format_current_chord(&self) -> String {
+        KbgpInput::format_chord(self.received_input().iter().cloned())
+    }
+
+    pub fn show_current_chord(&self, response: &egui::Response) {
+        egui::containers::popup::show_tooltip_for(
+            &response.ctx,
+            egui::Id::null(),
+            &response.rect,
+            |ui| {
+                ui.label(&self.format_current_chord());
+            },
+        );
+    }
+}
+
 pub(crate) struct KbgpPendingInputState {
     pub(crate) acceptor_id: egui::Id,
-    pub(crate) ignored_input: Option<HashSet<KbgpInput>>,
-    pub(crate) received_input: HashSet<KbgpInput>,
-    pub(crate) finished: bool,
-    pub(crate) limit: usize,
+    input_this_frame: Vec<KbgpInput>,
+    ignored_input: Option<HashSet<KbgpInput>>,
+    received_input: HashSet<KbgpInput>,
 }
 
 impl KbgpPendingInputState {
+    pub(crate) fn new(acceptor_id: egui::Id) -> Self {
+        Self {
+            acceptor_id,
+            input_this_frame: Default::default(),
+            ignored_input: None,
+            received_input: Default::default(),
+        }
+    }
+
     pub(crate) fn prepare(
         &mut self,
         _common: &KbgpCommon,
@@ -23,40 +81,13 @@ impl KbgpPendingInputState {
         };
         prepare_dlg(&mut handle);
         if let Some(ignored_input) = self.ignored_input.as_mut() {
-            for input in handle.current_input.iter() {
-                if self.limit <= self.received_input.len() {
-                    break;
-                }
-                if ignored_input.contains(input) {
-                    continue;
-                }
-                self.received_input.insert(input.clone());
-                match input {
-                    KbgpInput::GamepadAxisPositive(gamepad_axis) => {
-                        self.received_input
-                            .remove(&KbgpInput::GamepadAxisNegative(*gamepad_axis));
-                    }
-                    KbgpInput::GamepadAxisNegative(gamepad_axis) => {
-                        self.received_input
-                            .remove(&KbgpInput::GamepadAxisPositive(*gamepad_axis));
-                    }
-                    _ => {}
-                }
-            }
             ignored_input.retain(|input| handle.current_input.contains(input));
-            if !self.received_input.is_empty() {
-                if handle.current_input.is_empty() {
-                    self.finished = true;
-                } else if self.limit <= self.received_input.len() && ignored_input.is_empty() {
-                    if !handle
-                        .current_input
-                        .iter()
-                        .any(|input| self.received_input.contains(input))
-                    {
-                        self.finished = true;
-                    }
-                }
-            }
+            self.input_this_frame = handle
+                .current_input
+                .iter()
+                .filter(|inp| !ignored_input.contains(inp))
+                .cloned()
+                .collect();
         } else {
             self.ignored_input = Some(handle.current_input.iter().cloned().collect());
         }
