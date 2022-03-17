@@ -101,12 +101,12 @@ impl KbgpPrepare<'_> {
     ) {
         match self {
             KbgpPrepare::Navigation(prp) => {
-                prp.navigate_keyboard_default(&keys);
-                prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+                prp.navigate_keyboard_default(keys);
+                prp.navigate_gamepad_default(gamepads, gamepad_axes, gamepad_buttons);
             }
             KbgpPrepare::PendingInput(prp) => {
-                prp.accept_keyboard_input(&keys);
-                prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
+                prp.accept_keyboard_input(keys);
+                prp.accept_gamepad_input(gamepads, gamepad_axes, gamepad_buttons);
             }
         }
     }
@@ -459,9 +459,7 @@ impl KbgpEguiResponseExt for egui::Response {
         self.kbgp_pending_input_manual(|response, mut hnd| {
             hnd.process_new_input(|_, _| true);
             hnd.show_current_chord(response);
-            if hnd.input_this_frame().any(|_| true) {
-                None
-            } else if hnd.received_input().is_empty() {
+            if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
                 None
             } else {
                 Some(hnd.received_input().clone())
@@ -503,7 +501,7 @@ impl KbgpInput {
         let mut chord_text = String::new();
         for input in chord {
             use std::fmt::Write;
-            if 0 < chord_text.len() {
+            if !chord_text.is_empty() {
                 write!(&mut chord_text, " & ").unwrap();
             }
             write!(&mut chord_text, "{}", input).unwrap();
