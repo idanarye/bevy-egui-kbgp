@@ -308,6 +308,8 @@ pub trait KbgpEguiResponseExt {
     /// }
     fn kbgp_pending_input(&self) -> Option<KbgpInput>;
 
+    fn kbgp_pending_input_of_gamepad(&self, gamepad: Option<Gamepad>) -> Option<KbgpInput>;
+
     /// Accept a chord of key/button inputs from this widget.
     ///
     /// Must be called on widgets that had
@@ -348,6 +350,11 @@ pub trait KbgpEguiResponseExt {
     ///     });
     /// }
     fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
+
+    fn kbgp_pending_chord_of_gamepad(&self, gamepad: Option<Gamepad>)
+        -> Option<HashSet<KbgpInput>>;
+
+    fn kbgp_pending_chord_same_source(&self) -> Option<HashSet<KbgpInput>>;
 
     /// Helper for manually implementing custom methods for input-setting
     ///
@@ -464,9 +471,67 @@ impl KbgpEguiResponseExt for egui::Response {
         })
     }
 
+    fn kbgp_pending_input_of_gamepad(&self, gamepad: Option<Gamepad>) -> Option<KbgpInput> {
+        self.kbgp_pending_input_manual(|response, mut hnd| {
+            hnd.process_new_input(|hnd, input| {
+                input.get_gamepad() == gamepad && hnd.received_input().is_empty()
+            });
+            hnd.show_current_chord(response);
+            if hnd
+                .input_this_frame()
+                .any(|inp| hnd.received_input().contains(&inp))
+            {
+                None
+            } else {
+                let mut it = hnd.received_input().iter();
+                let single_input = it.next();
+                assert!(
+                    it.next().is_none(),
+                    "More than one input in chord, but limit is 1"
+                );
+                // This will not be empty and we'll return a value if and only if there was some
+                // input in received_input.
+                single_input.cloned()
+            }
+        })
+    }
+
     fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>> {
         self.kbgp_pending_input_manual(|response, mut hnd| {
             hnd.process_new_input(|_, _| true);
+            hnd.show_current_chord(response);
+            if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
+                None
+            } else {
+                Some(hnd.received_input().clone())
+            }
+        })
+    }
+
+    fn kbgp_pending_chord_of_gamepad(
+        &self,
+        gamepad: Option<Gamepad>,
+    ) -> Option<HashSet<KbgpInput>> {
+        self.kbgp_pending_input_manual(|response, mut hnd| {
+            hnd.process_new_input(|_, input| input.get_gamepad() == gamepad);
+            hnd.show_current_chord(response);
+            if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
+                None
+            } else {
+                Some(hnd.received_input().clone())
+            }
+        })
+    }
+
+    fn kbgp_pending_chord_same_source(&self) -> Option<HashSet<KbgpInput>> {
+        self.kbgp_pending_input_manual(|response, mut hnd| {
+            hnd.process_new_input(|hnd, input| {
+                if let Some(existing_input) = hnd.received_input().iter().next() {
+                    input.get_gamepad() == existing_input.get_gamepad()
+                } else {
+                    true
+                }
+            });
             hnd.show_current_chord(response);
             if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
                 None
@@ -516,5 +581,14 @@ impl KbgpInput {
             write!(&mut chord_text, "{}", input).unwrap();
         }
         chord_text
+    }
+
+    pub fn get_gamepad(&self) -> Option<Gamepad> {
+        match self {
+            KbgpInput::Keyboard(_) => None,
+            KbgpInput::GamepadAxisPositive(GamepadAxis(gamepad, _)) => Some(*gamepad),
+            KbgpInput::GamepadAxisNegative(GamepadAxis(gamepad, _)) => Some(*gamepad),
+            KbgpInput::GamepadButton(GamepadButton(gamepad, _)) => Some(*gamepad),
+        }
     }
 }
