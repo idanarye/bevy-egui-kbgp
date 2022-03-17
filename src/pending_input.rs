@@ -3,19 +3,31 @@ use bevy::utils::HashSet;
 
 use crate::{KbgpCommon, KbgpInput};
 
+/// Handle for
+/// [`kbgp_pending_input_manual`](crate::KbgpEguiResponseExt::kbgp_pending_input_manual).
 pub struct KbgpInputManualHandle<'a> {
     pub(crate) state: &'a mut KbgpPendingInputState,
 }
 
 impl<'a> KbgpInputManualHandle<'a> {
+    /// All the keys and buttons currently pressed during this frame.
+    ///
+    /// Does not include the keys/buttons presses that activated the input setting.
     pub fn input_this_frame(&'a self) -> impl 'a + Iterator<Item = KbgpInput> {
         self.state.input_this_frame.iter().cloned()
     }
 
+    /// The input already received so far.
     pub fn received_input(&self) -> &HashSet<KbgpInput> {
         &self.state.received_input
     }
 
+    /// Add input from `input_this_frame` to `received_input`.
+    ///
+    /// * `should_add` can be used to decided which input to add based on the nature of that new
+    ///   input and on already existing input.
+    /// * When adding a positive gamepad axis, if the negative input of the same axis was
+    ///   previously added it will be removed - and vice versa.
     pub fn process_new_input(&mut self, mut should_add: impl FnMut(&Self, KbgpInput) -> bool) {
         for input in self.state.input_this_frame.iter() {
             if should_add(self, input.clone()) {
@@ -37,10 +49,12 @@ impl<'a> KbgpInputManualHandle<'a> {
         }
     }
 
+    /// Format A string representing the currently received input.
     pub fn format_current_chord(&self) -> String {
         KbgpInput::format_chord(self.received_input().iter().cloned())
     }
 
+    /// Show a tooltip of the currently received input.
     pub fn show_current_chord(&self, response: &egui::Response) {
         egui::containers::popup::show_tooltip_for(
             &response.ctx,
@@ -99,18 +113,22 @@ pub struct KbgpPreparePendingInput {
 }
 
 impl KbgpPreparePendingInput {
+    /// Notify KBGP about a single input was accepted from the player.
     pub fn accept_input(&mut self, input: KbgpInput) {
         self.current_input.push(input);
     }
 
+    /// Notify KBGP about multiple inputs accepted from the player.
     pub fn accept_inputs(&mut self, inputs: impl Iterator<Item = KbgpInput>) {
         self.current_input.extend(inputs);
     }
 
+    /// Notify KBGP about all the input from the keyboard.
     pub fn accept_keyboard_input(&mut self, keys: &Input<KeyCode>) {
         self.accept_inputs(keys.get_pressed().copied().map(KbgpInput::Keyboard));
     }
 
+    /// Notify KBGP about all the input from the gamepad.
     pub fn accept_gamepad_input(
         &mut self,
         gamepads: &Gamepads,

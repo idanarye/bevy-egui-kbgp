@@ -27,20 +27,20 @@
 //! ) {
 //!     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
 //!         if ui
-//!             .button("First Button")
+//!             .button("Button")
 //!             .kbgp_initial_focus()
 //!             .kbgp_navigation()
 //!             .kbgp_activated()
 //!         {
-//!             // First button action
+//!             // Button action
 //!         }
 //!
-//!         if ui
-//!             .button("Second Button")
+//!         if let Some(input_selected_by_player) = ui
+//!             .button("Set Input")
 //!             .kbgp_navigation()
-//!             .kbgp_activated()
+//!             .kbgp_pending_input()
 //!         {
-//!             // Second button action
+//!             // Do something with the input
 //!         }
 //!     });
 //! }
@@ -253,21 +253,107 @@ struct NodeData {
 /// ```
 pub trait KbgpEguiResponseExt {
     /// When the UI is first created, focus on this widget.
-    ///
-    /// Must be called before [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation).
     fn kbgp_initial_focus(self) -> Self;
+
     /// Navigate to and from this widget.
     fn kbgp_navigation(self) -> Self;
+
     /// Use instead of egui's `.clicked()` to support gamepads.
     fn kbgp_activated(self) -> bool;
 
+    /// Accept a single key/button input from this widget.
+    ///
+    /// Must be called on widgets that had
+    /// [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) called on them.
+    ///
+    /// ```no_run
+    /// use bevy::prelude::*;
+    /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui_kbgp::prelude::*;
+    /// fn main() {
+    ///     App::new()
+    ///         .add_plugins(DefaultPlugins)
+    ///         .add_plugin(EguiPlugin)
+    ///         .add_system(kbgp_system_default_input)
+    ///         .add_system(ui_system)
+    ///         .insert_resource(JumpInput(KbgpInput::Keyboard(KeyCode::Space)))
+    ///         .run();
+    /// }
+    ///
+    /// struct JumpInput(KbgpInput);
+    ///
+    /// fn ui_system(
+    ///     mut egui_context: ResMut<EguiContext>,
+    ///     mut jump_input: ResMut<JumpInput>,
+    /// ) {
+    ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+    ///         ui.horizontal(|ui| {
+    ///             ui.label("Set button for jumping");
+    ///             if let Some(new_jump_input) = ui.button(format!("{}", jump_input.0))
+    ///                 .kbgp_navigation()
+    ///                 .kbgp_pending_input()
+    ///             {
+    ///                 jump_input.0 = new_jump_input;
+    ///             }
+    ///         });
+    ///     });
+    /// }
+    fn kbgp_pending_input(&self) -> Option<KbgpInput>;
+
+    /// Accept a chord of key/button inputs from this widget.
+    ///
+    /// Must be called on widgets that had
+    /// [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) called on them.
+    ///
+    /// ```no_run
+    /// use bevy::prelude::*;
+    /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui_kbgp::prelude::*;
+    /// fn main() {
+    ///     App::new()
+    ///         .add_plugins(DefaultPlugins)
+    ///         .add_plugin(EguiPlugin)
+    ///         .add_system(kbgp_system_default_input)
+    ///         .add_system(ui_system)
+    ///         .insert_resource(JumpChord(vec![KbgpInput::Keyboard(KeyCode::Space)]))
+    ///         .run();
+    /// }
+    ///
+    /// struct JumpChord(Vec<KbgpInput>);
+    ///
+    /// fn ui_system(
+    ///     mut egui_context: ResMut<EguiContext>,
+    ///     mut jump_chord: ResMut<JumpChord>,
+    /// ) {
+    ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+    ///         ui.horizontal(|ui| {
+    ///             ui.label("Set chord of buttons for jumping");
+    ///             if let Some(new_jump_chord) = ui
+    ///                 .button(KbgpInput::format_chord(jump_chord.0.iter().cloned()))
+    ///                 .kbgp_navigation()
+    ///                 .kbgp_pending_chord()
+    ///             {
+    ///                 jump_chord.0 = new_jump_chord.into_iter().collect();
+    ///             }
+    ///         });
+    ///     });
+    /// }
+    fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
+
+    /// Helper for manually implementing custom methods for input-setting
+    ///
+    /// Inside the delegate, one would usually:
+    /// * Call
+    ///   [`process_new_input`](crate::pending_input::KbgpInputManualHandle::process_new_input) to
+    ///   decide which new input to register.
+    /// * Call
+    ///   [`show_current_chord`](crate::pending_input::KbgpInputManualHandle::show_current_chord)
+    ///   to show the tooltip, or generate some other visual cue.
+    /// * Return `None` if the player did not finish entering the input.
     fn kbgp_pending_input_manual<T>(
         &self,
         dlg: impl FnOnce(&Self, KbgpInputManualHandle) -> Option<T>,
     ) -> Option<T>;
-
-    fn kbgp_pending_input(&self) -> Option<KbgpInput>;
-    fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
 }
 
 impl KbgpEguiResponseExt for egui::Response {
@@ -384,6 +470,7 @@ impl KbgpEguiResponseExt for egui::Response {
     }
 }
 
+/// Input from the keyboard or from a gamepad.
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum KbgpInput {
     Keyboard(KeyCode),
@@ -411,6 +498,7 @@ impl core::fmt::Display for KbgpInput {
 }
 
 impl KbgpInput {
+    /// Create a string that describes a chord of multiple inputs.
     pub fn format_chord(chord: impl Iterator<Item = Self>) -> String {
         let mut chord_text = String::new();
         for input in chord {

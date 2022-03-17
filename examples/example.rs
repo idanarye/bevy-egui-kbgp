@@ -33,7 +33,7 @@ fn ui_system(
         }
     }
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
-        ui.button("Holds focus on startup")
+        ui.button("This button doesn't do anything - it only demonstrates focus grabbing when the GUI is created")
             .kbgp_initial_focus()
             .kbgp_navigation();
         ui.horizontal(|ui| {

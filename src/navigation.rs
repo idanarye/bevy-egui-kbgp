@@ -20,12 +20,12 @@ pub(crate) struct KbgpNavigationState {
 }
 
 pub struct KbgpPrepareNavigation {
-    /// When the user holds a key/button, KBGP will wait `secs_after_first_input` seconds before
+    /// When the player holds a key/button, KBGP will wait `secs_after_first_input` seconds before
     /// starting to rapidly apply the action.
     ///
     /// Default: 0.6 seconds.
     pub secs_after_first_input: f64,
-    /// When the user holds a key/button, after
+    /// When the player holds a key/button, after
     /// [`secs_after_first_input`](crate::KbgpPrepareNavigation::secs_after_first_input), KBGP
     /// will apply the action every `secs_between_inputs` seconds.
     ///
