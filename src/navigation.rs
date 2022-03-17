@@ -1,3 +1,4 @@
+use crate::egui;
 use bevy::prelude::*;
 
 use crate::KbgpCommon;
@@ -142,7 +143,7 @@ impl KbgpNavigationState {
     pub(crate) fn prepare(
         &mut self,
         common: &KbgpCommon,
-        egui_ctx: &egui::CtxRef,
+        egui_ctx: &egui::Context,
         prepare_dlg: impl FnOnce(&mut KbgpPrepareNavigation),
     ) {
         self.move_focus = None;
@@ -207,7 +208,7 @@ impl KbgpNavigationState {
     fn move_focus(
         &mut self,
         common: &KbgpCommon,
-        egui_ctx: &egui::CtxRef,
+        egui_ctx: &egui::Context,
         transform_pos_downward: impl Fn(egui::Pos2) -> egui::Pos2,
     ) {
         let transform_rect_downward = |rect: egui::Rect| -> egui::Rect {

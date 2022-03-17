@@ -29,9 +29,9 @@ Try it out in https://idanarye.github.io/bevy-egui-kbgp/demos/example
 
 ## Versions
 
-| bevy | egui | bevy_egui | bevy-egui-kbgp |
-|------|------|------------|----------------|
-| 0.6  | 0.16 | 0.11.1     | 0.1            |
+| bevy | bevy_egui | bevy-egui-kbgp |
+|------|-----------|----------------|
+| 0.6  | 0.12      | 0.1            |
 
 ## License
 

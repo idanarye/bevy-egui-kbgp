@@ -8,6 +8,7 @@
 //!   functionality.
 //!
 //! ```no_run
+//! use bevy_egui_kbgp::{egui, bevy_egui};
 //! use bevy::prelude::*;
 //! use bevy_egui::{EguiContext, EguiPlugin};
 //! use bevy_egui_kbgp::prelude::*;
@@ -46,6 +47,9 @@
 //! }
 //! ```
 
+pub use bevy_egui;
+pub use bevy_egui::egui;
+
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::EguiContext;
@@ -79,6 +83,7 @@ impl KbgpPrepare<'_> {
     /// be applied to a different egui context - this method can be used instead:
     ///
     /// ```no_run
+    /// # use bevy_egui_kbgp::bevy_egui;
     /// # use bevy::prelude::*;
     /// # use bevy_egui_kbgp::prelude::*;
     /// # use bevy_egui::EguiContext;
@@ -118,7 +123,7 @@ struct Kbgp {
     state: KbgpState,
 }
 
-fn kbgp_get(egui_ctx: &egui::CtxRef) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>> {
+fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>> {
     egui_ctx
         .memory()
         .data
@@ -137,6 +142,7 @@ fn kbgp_get(egui_ctx: &egui::CtxRef) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>>
 /// Typical usage:
 ///
 /// ```no_run
+/// # use bevy_egui_kbgp::bevy_egui;
 /// # use bevy::prelude::*;
 /// # use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
 /// # use bevy_egui_kbgp::prelude::*;
@@ -162,7 +168,7 @@ fn kbgp_get(egui_ctx: &egui::CtxRef) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>>
 ///     });
 /// }
 /// ```
-pub fn kbgp_prepare(egui_ctx: &egui::CtxRef, prepare_dlg: impl FnOnce(KbgpPrepare<'_>)) {
+pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepare<'_>)) {
     let kbgp = kbgp_get(egui_ctx);
     let mut kbgp = kbgp.lock();
     // Since Bevy is allow to reorder systems mid-run, there is a risk that the KBGP prepare system
@@ -239,6 +245,7 @@ struct NodeData {
 /// Extensions for egui's `Response` to activate KBGP's functionality.
 ///
 /// ```no_run
+/// # use bevy_egui_kbgp::egui;
 /// # use bevy::prelude::*;
 /// # use bevy_egui_kbgp::prelude::*;
 /// # let ui: egui::Ui = todo!();
@@ -269,6 +276,7 @@ pub trait KbgpEguiResponseExt {
     /// ```no_run
     /// use bevy::prelude::*;
     /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
     ///     App::new()
@@ -308,6 +316,7 @@ pub trait KbgpEguiResponseExt {
     /// ```no_run
     /// use bevy::prelude::*;
     /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
     ///     App::new()

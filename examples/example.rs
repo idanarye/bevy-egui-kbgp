@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::utils::HashSet;
 use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
+use bevy_egui_kbgp::egui;
 use bevy_egui_kbgp::prelude::*;
 
 fn main() {

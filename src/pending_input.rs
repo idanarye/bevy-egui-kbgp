@@ -1,3 +1,4 @@
+use crate::egui;
 use bevy::prelude::*;
 use bevy::utils::HashSet;
 
@@ -87,7 +88,7 @@ impl KbgpPendingInputState {
     pub(crate) fn prepare(
         &mut self,
         _common: &KbgpCommon,
-        _egui_ctx: &egui::CtxRef,
+        _egui_ctx: &egui::Context,
         prepare_dlg: impl FnOnce(&mut KbgpPreparePendingInput),
     ) {
         let mut handle = KbgpPreparePendingInput {
