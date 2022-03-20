@@ -8,8 +8,8 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
+        .add_plugin(KbgpPlugin)
         .insert_resource(EguiSettings { scale_factor: 2.0 })
-        .add_system(kbgp_system_default_input)
         .add_system(ui_system)
         .run();
 }

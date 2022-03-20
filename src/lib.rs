@@ -1,9 +1,7 @@
 //! Improve the keyboard and gamepads usage for egui in Bevy.
 //!
 //! Usage:
-//! * Either use the [`kbgp_system_default_input`](crate::kbgp_system_default_input) system or
-//!   call [`kbgp_prepare`](crate::kbgp_prepare) with custom inputs and/or with a non-default egui
-//!   context.
+//! * Add [`KbgpPlugin`](crate::KbgpPlugin).
 //! * Use [the extension methods](crate::KbgpEguiResponseExt) on the egui widgets to add KBGP's
 //!   functionality.
 //!
@@ -17,7 +15,7 @@
 //!     App::new()
 //!         .add_plugins(DefaultPlugins)
 //!         .add_plugin(EguiPlugin)
-//!         .add_system(kbgp_system_default_input)
+//!         .add_plugin(KbgpPlugin)
 //!         .add_system(ui_system)
 //!         .run();
 //! }
@@ -63,58 +61,47 @@ mod navigation;
 mod pending_input;
 
 pub mod prelude {
+    pub use crate::KbgpPlugin;
+    pub use crate::KbgpSettings;
     pub use crate::kbgp_prepare;
-    pub use crate::kbgp_system_default_input;
     pub use crate::KbgpEguiResponseExt;
     pub use crate::KbgpInput;
+}
+
+/// Adds KBGP input handling system and [`KbgpSettings`](crate::KbgpSettings).
+pub struct KbgpPlugin;
+
+impl Plugin for KbgpPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(KbgpSettings::default());
+        app.add_system_to_stage(
+            CoreStage::PreUpdate,
+            kbgp_system_default_input.after(bevy_egui::EguiSystem::ProcessInput),
+        );
+    }
+}
+
+/// General configuration resource for KBGP.
+///
+/// Note: [`KbgpPlugin`](crate::KbgpPlugin) will add the default settings, so custom settings
+/// should either be added after the plugin or modified with a system.
+pub struct KbgpSettings {
+    /// Whether or not gamepads input is accepted for navigation and for chords.
+    pub allow_gamepads: bool,
+}
+
+impl Default for KbgpSettings {
+    fn default() -> Self {
+        Self {
+            allow_gamepads: true,
+        }
+    }
 }
 
 /// Object used to configure KBGP's behavior in [`kbgp_prepare`].
 pub enum KbgpPrepare<'a> {
     Navigation(&'a mut KbgpPrepareNavigation),
     PendingInput(&'a mut KbgpPreparePendingInput),
-}
-
-impl KbgpPrepare<'_> {
-    /// Apply the default KBGP input scheme.
-    ///
-    /// The [`kbgp_system_default_input`](crate::kbgp_system_default_input) system already applies
-    /// this to the default egui context, so it is preferrable to use that, but in case it needs to
-    /// be applied to a different egui context - this method can be used instead:
-    ///
-    /// ```no_run
-    /// # use bevy_egui_kbgp::bevy_egui;
-    /// # use bevy::prelude::*;
-    /// # use bevy_egui_kbgp::prelude::*;
-    /// # use bevy_egui::EguiContext;
-    /// # let window_id = bevy::window::WindowId::new();
-    /// # let mut egui_context: ResMut<EguiContext> = panic!();
-    /// # let keys: Res<Input<KeyCode>> = panic!();
-    /// # let gamepads: Res<Gamepads> = panic!();
-    /// # let gamepad_axes: Res<Axis<GamepadAxis>> = panic!();
-    /// # let gamepad_buttons: Res<Input<GamepadButton>> = panic!();
-    /// kbgp_prepare(egui_context.ctx_for_window_mut(window_id), |mut prp| {
-    ///     prp.default_input(&keys, &gamepads, &gamepad_axes, &gamepad_buttons);
-    /// });
-    /// ```
-    pub fn default_input(
-        &mut self,
-        keys: &Input<KeyCode>,
-        gamepads: &Gamepads,
-        gamepad_axes: &Axis<GamepadAxis>,
-        gamepad_buttons: &Input<GamepadButton>,
-    ) {
-        match self {
-            KbgpPrepare::Navigation(prp) => {
-                prp.navigate_keyboard_default(keys);
-                prp.navigate_gamepad_default(gamepads, gamepad_axes, gamepad_buttons);
-            }
-            KbgpPrepare::PendingInput(prp) => {
-                prp.accept_keyboard_input(keys);
-                prp.accept_gamepad_input(gamepads, gamepad_axes, gamepad_buttons);
-            }
-        }
-    }
 }
 
 #[derive(Default)]
@@ -131,7 +118,10 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
         .clone()
 }
 
-/// Must be called every frame, either manually or by using [`kbgp_system_default_input`].
+/// Must be called every frame, either manually or by using [`KbgpPlugin`].
+///
+/// Should be called between bevy_egui's input handling system and the system that generates the
+/// UI - so in the `CoreStage::PreUpdate` stage after the `EguiSystem::ProcessInput` label.
 ///
 /// The `prepare_dlg` argument is a closure that accepts a [`KbgpPrepare`](crate::KbgpPrepare), and
 /// used to:
@@ -207,15 +197,29 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
 ///   * DPad - navigation.
 ///   * Left stick - navigation.
 ///   * South face button (depends on model - usually X or A): widget activation.
-pub fn kbgp_system_default_input(
+fn kbgp_system_default_input(
     mut egui_context: ResMut<EguiContext>,
+    settings: Res<KbgpSettings>,
     keys: Res<Input<KeyCode>>,
     gamepads: Res<Gamepads>,
     gamepad_axes: Res<Axis<GamepadAxis>>,
     gamepad_buttons: Res<Input<GamepadButton>>,
 ) {
-    kbgp_prepare(egui_context.ctx_mut(), |mut prp| {
-        prp.default_input(&keys, &gamepads, &gamepad_axes, &gamepad_buttons);
+    kbgp_prepare(egui_context.ctx_mut(), |prp| {
+        match prp {
+            KbgpPrepare::Navigation(prp) => {
+                prp.navigate_keyboard_default(&keys);
+                if settings.allow_gamepads {
+                    prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+                }
+            }
+            KbgpPrepare::PendingInput(prp) => {
+                prp.accept_keyboard_input(&keys);
+                if settings.allow_gamepads {
+                    prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
+                }
+            }
+        }
     });
 }
 
@@ -279,7 +283,7 @@ pub trait KbgpEguiResponseExt {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
     ///         .add_plugin(EguiPlugin)
-    ///         .add_system(kbgp_system_default_input)
+    ///         .add_plugin(KbgpPlugin)
     ///         .add_system(ui_system)
     ///         .insert_resource(JumpInput(KbgpInput::Keyboard(KeyCode::Space)))
     ///         .run();
@@ -321,7 +325,7 @@ pub trait KbgpEguiResponseExt {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
     ///         .add_plugin(EguiPlugin)
-    ///         .add_system(kbgp_system_default_input)
+    ///         .add_plugin(KbgpPlugin)
     ///         .add_system(ui_system)
     ///         .insert_resource(JumpChord(vec![KbgpInput::Keyboard(KeyCode::Space)]))
     ///         .run();
