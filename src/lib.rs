@@ -4,6 +4,8 @@
 //! * Add [`KbgpPlugin`](crate::KbgpPlugin).
 //! * Use [the extension methods](crate::KbgpEguiResponseExt) on the egui widgets to add KBGP's
 //!   functionality.
+//! * Call [`ui.kbgp_clear_input`](crate::KbgpEguiUiCtxExt::kbgp_clear_input) when triggering a
+//!   state transition as a response to a click on an egui widget.
 //!
 //! ```no_run
 //! use bevy_egui_kbgp::{egui, bevy_egui};
@@ -65,6 +67,7 @@ pub mod prelude {
     pub use crate::KbgpSettings;
     pub use crate::kbgp_prepare;
     pub use crate::KbgpEguiResponseExt;
+    pub use crate::KbgpEguiUiCtxExt;
     pub use crate::KbgpInput;
 }
 
@@ -581,5 +584,34 @@ impl KbgpInput {
             KbgpInput::GamepadAxisNegative(GamepadAxis(gamepad, _)) => Some(*gamepad),
             KbgpInput::GamepadButton(GamepadButton(gamepad, _)) => Some(*gamepad),
         }
+    }
+}
+
+/// Extensions for egui's `UI` and Context to activate KBGP's functionality.
+pub trait KbgpEguiUiCtxExt {
+    /// Needs to be called when triggering state transition from egui.
+    ///
+    /// Otherwise, the same player input that triggered the transition will be applied again to the
+    /// GUI in the new state.
+    fn kbgp_clear_input(&self);
+}
+
+impl KbgpEguiUiCtxExt for egui::Ui {
+    fn kbgp_clear_input(&self) {
+        self.ctx().kbgp_clear_input()
+    }
+}
+
+impl KbgpEguiUiCtxExt for egui::Context {
+    fn kbgp_clear_input(&self) {
+        let mut input = self.input_mut();
+        input.pointer = Default::default();
+        input.events.retain(|event| {
+            match event {
+                egui::Event::Key { key: egui::Key::Space | egui::Key::Enter, pressed: true, modifiers: _ } => false,
+                egui::Event::PointerButton { pos: _, button: egui::PointerButton::Primary, pressed: true, modifiers: _ } => false,
+                _ => true,
+            }
+        });
     }
 }
