@@ -10,12 +10,11 @@ const INPUT_MASK_LEFT: u8 = 4;
 const INPUT_MASK_RIGHT: u8 = 8;
 const INPUT_MASK_HORIZONTAL: u8 = INPUT_MASK_LEFT | INPUT_MASK_RIGHT;
 
-const INPUT_MASK_ACTIVATE: u8 = 16;
+const INPUT_MASK_CLICK: u8 = 16;
 
 #[derive(Default)]
 pub(crate) struct KbgpNavigationState {
     pub(crate) move_focus: Option<egui::Id>,
-    pub(crate) activate: Option<egui::Id>,
     prev_input: u8,
     next_navigation: f64,
 }
@@ -72,13 +71,9 @@ impl KbgpPrepareNavigation {
         self.input |= INPUT_MASK_RIGHT;
     }
 
-    /// Activate the currently focused widget.
-    ///
-    /// Will only work if the widget's activation is checked with
-    /// [`kbgp_activated`](crate::KbgpEguiResponseExt::kbgp_activated). Cannot affect egui's
-    /// standard `clicked`.
-    pub fn activate_focused(&mut self) {
-        self.input |= INPUT_MASK_ACTIVATE;
+    /// Make egui think the player pressed Enter.
+    pub fn emulate_click(&mut self) {
+        self.input |= INPUT_MASK_CLICK;
     }
 
     /// Navigate the UI with arrow keys.
@@ -131,7 +126,7 @@ impl KbgpPrepareNavigation {
                 GamepadButtonType::DPadLeft => self.navigate_left(),
                 GamepadButtonType::DPadRight => self.navigate_right(),
                 GamepadButtonType::South => {
-                    self.activate_focused();
+                    self.emulate_click();
                 }
                 _ => (),
             }
@@ -147,7 +142,6 @@ impl KbgpNavigationState {
         prepare_dlg: impl FnOnce(&mut KbgpPrepareNavigation),
     ) {
         self.move_focus = None;
-        self.activate = None;
 
         let mut handle = KbgpPrepareNavigation {
             secs_after_first_input: 0.6,
@@ -168,8 +162,12 @@ impl KbgpNavigationState {
                 self.next_navigation = current_time + handle.secs_between_inputs;
             }
 
-            if effective_input & INPUT_MASK_ACTIVATE != 0 {
-                self.activate = egui_ctx.memory().focus();
+            if effective_input & INPUT_MASK_CLICK != 0 {
+                egui_ctx.input_mut().events.push(egui::Event::Key {
+                    key: egui::Key::Enter,
+                    pressed: true,
+                    modifiers: Default::default(),
+                });
             }
 
             match effective_input & INPUT_MASK_VERTICAL {

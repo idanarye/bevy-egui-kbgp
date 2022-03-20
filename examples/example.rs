@@ -58,7 +58,7 @@ fn ui_system(
                 if ui
                     .button(format!("Counter: {counter}"))
                     .kbgp_navigation()
-                    .kbgp_activated()
+                    .clicked()
                 {
                     *counter += 1;
                 }
@@ -67,7 +67,7 @@ fn ui_system(
         if ui
             .checkbox(&mut checkbox_value.clone(), "Checkbox")
             .kbgp_navigation()
-            .kbgp_activated()
+            .clicked()
         {
             *checkbox_value = !*checkbox_value;
         }
@@ -76,7 +76,7 @@ fn ui_system(
                 if ui
                     .selectable_label(*label_value == i, format!("Value {i}"))
                     .kbgp_navigation()
-                    .kbgp_activated()
+                    .clicked()
                 {
                     *label_value = i;
                 }

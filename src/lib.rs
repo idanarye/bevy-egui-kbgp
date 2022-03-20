@@ -31,7 +31,7 @@
 //!             .button("Button")
 //!             .kbgp_initial_focus()
 //!             .kbgp_navigation()
-//!             .kbgp_activated()
+//!             .clicked()
 //!         {
 //!             // Button action
 //!         }
@@ -253,7 +253,7 @@ struct NodeData {
 ///     .button("My Button")
 ///     .kbgp_initial_focus() // focus on this button when starting the UI
 ///     .kbgp_navigation() // navigate to and from this button with keyboard/gamepad
-///     .kbgp_activated() // use instead of egui's `.clicked()` to support gamepads
+///     .clicked()
 /// {
 ///     // ...
 /// }
@@ -264,9 +264,6 @@ pub trait KbgpEguiResponseExt {
 
     /// Navigate to and from this widget.
     fn kbgp_navigation(self) -> Self;
-
-    /// Use instead of egui's `.clicked()` to support gamepads.
-    fn kbgp_activated(self) -> bool;
 
     /// Accept a single key/button input from this widget.
     ///
@@ -408,16 +405,6 @@ impl KbgpEguiResponseExt for egui::Response {
         self
     }
 
-    fn kbgp_activated(self) -> bool {
-        let kbgp = kbgp_get(&self.ctx);
-        let kbgp = kbgp.lock();
-        match &kbgp.state {
-            KbgpState::Inactive => self.clicked(),
-            KbgpState::Navigation(state) => self.clicked() || Some(self.id) == state.activate,
-            KbgpState::PendingInput(_) => self.clicked(),
-        }
-    }
-
     fn kbgp_pending_input_manual<T>(
         &self,
         dlg: impl FnOnce(&Self, KbgpInputManualHandle) -> Option<T>,
@@ -426,8 +413,8 @@ impl KbgpEguiResponseExt for egui::Response {
         let mut kbgp = kbgp.lock();
         match &mut kbgp.state {
             KbgpState::Inactive => None,
-            KbgpState::Navigation(state) => {
-                if self.clicked() || Some(self.id) == state.activate {
+            KbgpState::Navigation(_) => {
+                if self.clicked() {
                     kbgp.state = KbgpState::PendingInput(KbgpPendingInputState::new(self.id));
                 }
                 None
