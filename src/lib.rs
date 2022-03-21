@@ -46,6 +46,23 @@
 //!     });
 //! }
 //! ```
+//!
+//! ## Creating Key-Setting UI
+//!
+//! Use functions like [`kbgp_pending_input`](crate::KbgpEguiResponseExt::kbgp_pending_input) to
+//! convert a regular button to a key-setting button. When the players presses that button, they'll
+//! be prompted to enter input from the keyboard, the mouse, or a gamepad. That input will be
+//! returned as a [`KbgpInput`].
+//!
+//! [`kbgp_pending_chord`](crate::KbgpEguiResponseExt::kbgp_pending_chord) is similar, but prompts
+//! the user to enter multiple keys instead of just one.
+//!
+//! Both functions have several variants that allow limiting the chords/keys accepted by that
+//! button.
+//!
+//! By default, mouse wheel input is disabled. The reason is that mouse wheel events are a pain to
+//! deal with, and most third party crates that ease input handling don't support them - so it's
+//! better not to let the player select input that the game is unable to deal with.
 
 pub use bevy_egui;
 pub use bevy_egui::egui;
