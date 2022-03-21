@@ -119,6 +119,14 @@ impl KbgpPreparePendingInput {
         self.current_input.push(input);
     }
 
+    /// Notify KBGP about a single input was accepted from the player, only if the same input was
+    /// not already received this frame.
+    pub fn accept_input_unique(&mut self, input: KbgpInput) {
+        if !self.current_input.contains(&input) {
+            self.current_input.push(input);
+        }
+    }
+
     /// Notify KBGP about multiple inputs accepted from the player.
     pub fn accept_inputs(&mut self, inputs: impl Iterator<Item = KbgpInput>) {
         self.current_input.extend(inputs);
@@ -127,6 +135,34 @@ impl KbgpPreparePendingInput {
     /// Notify KBGP about all the input from the keyboard.
     pub fn accept_keyboard_input(&mut self, keys: &Input<KeyCode>) {
         self.accept_inputs(keys.get_pressed().copied().map(KbgpInput::Keyboard));
+    }
+
+    /// Notify KBGP about all the input from mouse buttons.
+    pub fn accept_mouse_buttons_input(&mut self, buttons: &Input<MouseButton>) {
+        self.accept_inputs(buttons.get_pressed().copied().map(KbgpInput::MouseButton));
+    }
+
+    /// Notify KBGP about all the input from the mouse wheel.
+    pub fn accept_mouse_wheel_event(
+        &mut self,
+        event: &bevy::input::mouse::MouseWheel,
+        vertical: bool,
+        horizontal: bool,
+    ) {
+        if vertical {
+            if 0.0 < event.y {
+                self.accept_input_unique(KbgpInput::MouseWheelUp);
+            } else if event.y < 0.0 {
+                self.accept_input_unique(KbgpInput::MouseWheelDown);
+            }
+        }
+        if horizontal {
+            if 0.0 < event.x {
+                self.accept_input_unique(KbgpInput::MouseWheelRight);
+            } else if event.x < 0.0 {
+                self.accept_input_unique(KbgpInput::MouseWheelLeft);
+            }
+        }
     }
 
     /// Notify KBGP about all the input from the gamepad.

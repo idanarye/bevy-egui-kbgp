@@ -63,12 +63,12 @@ mod navigation;
 mod pending_input;
 
 pub mod prelude {
-    pub use crate::KbgpPlugin;
-    pub use crate::KbgpSettings;
     pub use crate::kbgp_prepare;
     pub use crate::KbgpEguiResponseExt;
     pub use crate::KbgpEguiUiCtxExt;
     pub use crate::KbgpInput;
+    pub use crate::KbgpPlugin;
+    pub use crate::KbgpSettings;
 }
 
 /// Adds KBGP input handling system and [`KbgpSettings`](crate::KbgpSettings).
@@ -87,8 +87,17 @@ impl Plugin for KbgpPlugin {
 /// General configuration resource for KBGP.
 ///
 /// Note: [`KbgpPlugin`](crate::KbgpPlugin) will add the default settings, so custom settings
-/// should either be added after the plugin or modified with a system.
+/// should either be added after the plugin or modified with a system. The default is to enable
+/// everything except the mouse wheel.
 pub struct KbgpSettings {
+    /// Whether or not keyboard input is accepted for navigation and for chords.
+    pub allow_keyboard: bool,
+    /// Whether or not mouse buttons are accepted for chords.
+    pub allow_mouse_buttons: bool,
+    /// Whether or not mouse wheel is accepted for chords. Defaults to `false`.
+    pub allow_mouse_wheel: bool,
+    /// Whether or not mouse wheel sideways scrolling is accepted for chords. Defaults to `false`.
+    pub allow_mouse_wheel_sideways: bool,
     /// Whether or not gamepads input is accepted for navigation and for chords.
     pub allow_gamepads: bool,
 }
@@ -96,6 +105,10 @@ pub struct KbgpSettings {
 impl Default for KbgpSettings {
     fn default() -> Self {
         Self {
+            allow_keyboard: true,
+            allow_mouse_buttons: true,
+            allow_mouse_wheel: false,
+            allow_mouse_wheel_sideways: false,
             allow_gamepads: true,
         }
     }
@@ -146,6 +159,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///     gamepads: Res<Gamepads>,
 ///     gamepad_axes: Res<Axis<GamepadAxis>>,
 ///     gamepad_buttons: Res<Input<GamepadButton>>,
+///     mouse_buttons: Res<Input<MouseButton>>,
 /// ) {
 ///     kbgp_prepare(egui_context.ctx_mut(), |prp| {
 ///         match prp {
@@ -155,6 +169,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///             }
 ///             KbgpPrepare::PendingInput(prp) => {
 ///                 prp.accept_keyboard_input(&keys);
+///                 prp.accept_mouse_buttons_input(&mouse_buttons);
 ///                 prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
 ///             }
 ///         }
@@ -204,23 +219,39 @@ fn kbgp_system_default_input(
     mut egui_context: ResMut<EguiContext>,
     settings: Res<KbgpSettings>,
     keys: Res<Input<KeyCode>>,
+    mouse_buttons: Res<Input<MouseButton>>,
+    mut mouse_wheel_events: EventReader<bevy::input::mouse::MouseWheel>,
     gamepads: Res<Gamepads>,
     gamepad_axes: Res<Axis<GamepadAxis>>,
     gamepad_buttons: Res<Input<GamepadButton>>,
 ) {
-    kbgp_prepare(egui_context.ctx_mut(), |prp| {
-        match prp {
-            KbgpPrepare::Navigation(prp) => {
+    kbgp_prepare(egui_context.ctx_mut(), |prp| match prp {
+        KbgpPrepare::Navigation(prp) => {
+            if settings.allow_keyboard {
                 prp.navigate_keyboard_default(&keys);
-                if settings.allow_gamepads {
-                    prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+            }
+            if settings.allow_gamepads {
+                prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+            }
+        }
+        KbgpPrepare::PendingInput(prp) => {
+            if settings.allow_keyboard {
+                prp.accept_keyboard_input(&keys);
+            }
+            if settings.allow_mouse_buttons {
+                prp.accept_mouse_buttons_input(&mouse_buttons);
+            }
+            if settings.allow_mouse_wheel || settings.allow_mouse_wheel_sideways {
+                for event in mouse_wheel_events.iter() {
+                    prp.accept_mouse_wheel_event(
+                        event,
+                        settings.allow_mouse_wheel,
+                        settings.allow_mouse_wheel_sideways,
+                    );
                 }
             }
-            KbgpPrepare::PendingInput(prp) => {
-                prp.accept_keyboard_input(&keys);
-                if settings.allow_gamepads {
-                    prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
-                }
+            if settings.allow_gamepads {
+                prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
             }
         }
     });
@@ -540,6 +571,11 @@ impl KbgpEguiResponseExt for egui::Response {
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 pub enum KbgpInput {
     Keyboard(KeyCode),
+    MouseButton(MouseButton),
+    MouseWheelUp,
+    MouseWheelDown,
+    MouseWheelLeft,
+    MouseWheelRight,
     GamepadAxisPositive(GamepadAxis),
     GamepadAxisNegative(GamepadAxis),
     GamepadButton(GamepadButton),
@@ -549,6 +585,11 @@ impl core::fmt::Display for KbgpInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             KbgpInput::Keyboard(key) => write!(f, "{:?}", key)?,
+            KbgpInput::MouseButton(button) => write!(f, "Mouse{:?}", button)?,
+            KbgpInput::MouseWheelUp => write!(f, "MouseScrollUp")?,
+            KbgpInput::MouseWheelDown => write!(f, "MouseScrollDown")?,
+            KbgpInput::MouseWheelLeft => write!(f, "MouseScrollLeft")?,
+            KbgpInput::MouseWheelRight => write!(f, "MouseScrollRight")?,
             KbgpInput::GamepadButton(GamepadButton(Gamepad(gamepad), button)) => {
                 write!(f, "[{}]{:?}", gamepad, button)?
             }
@@ -580,6 +621,11 @@ impl KbgpInput {
     pub fn get_gamepad(&self) -> Option<Gamepad> {
         match self {
             KbgpInput::Keyboard(_) => None,
+            KbgpInput::MouseButton(_) => None,
+            KbgpInput::MouseWheelUp => None,
+            KbgpInput::MouseWheelDown => None,
+            KbgpInput::MouseWheelLeft => None,
+            KbgpInput::MouseWheelRight => None,
             KbgpInput::GamepadAxisPositive(GamepadAxis(gamepad, _)) => Some(*gamepad),
             KbgpInput::GamepadAxisNegative(GamepadAxis(gamepad, _)) => Some(*gamepad),
             KbgpInput::GamepadButton(GamepadButton(gamepad, _)) => Some(*gamepad),
@@ -606,12 +652,19 @@ impl KbgpEguiUiCtxExt for egui::Context {
     fn kbgp_clear_input(&self) {
         let mut input = self.input_mut();
         input.pointer = Default::default();
-        input.events.retain(|event| {
-            match event {
-                egui::Event::Key { key: egui::Key::Space | egui::Key::Enter, pressed: true, modifiers: _ } => false,
-                egui::Event::PointerButton { pos: _, button: egui::PointerButton::Primary, pressed: true, modifiers: _ } => false,
-                _ => true,
-            }
+        input.events.retain(|event| match event {
+            egui::Event::Key {
+                key: egui::Key::Space | egui::Key::Enter,
+                pressed: true,
+                modifiers: _,
+            } => false,
+            egui::Event::PointerButton {
+                pos: _,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: _,
+            } => false,
+            _ => true,
         });
     }
 }

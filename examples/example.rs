@@ -17,6 +17,13 @@ fn main() {
         .add_plugin(EguiPlugin)
         .add_plugin(KbgpPlugin)
         .insert_resource(EguiSettings { scale_factor: 2.0 })
+        .insert_resource(KbgpSettings {
+            allow_keyboard: true,
+            allow_mouse_buttons: true,
+            allow_mouse_wheel: true,
+            allow_mouse_wheel_sideways: true,
+            allow_gamepads: true,
+        })
         .add_state(MenuState::Main)
         .add_system_set(SystemSet::on_update(MenuState::Main).with_system(ui_system))
         .add_system_set(SystemSet::on_update(MenuState::Empty1).with_system(empty_state_system))
@@ -37,14 +44,23 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             MenuState::Empty2 => MenuState::Main,
         };
 
-        if ui.button(format!("<<{:?}<<", prev_state)).kbgp_navigation().clicked() {
+        if ui
+            .button(format!("<<{:?}<<", prev_state))
+            .kbgp_navigation()
+            .clicked()
+        {
             state.set(prev_state).unwrap();
             ui.kbgp_clear_input();
         }
 
         ui.label(format!("{:?}", state.current()));
 
-        if ui.button(format!(">>{:?}>>", next_state)).kbgp_navigation().kbgp_initial_focus().clicked() {
+        if ui
+            .button(format!(">>{:?}>>", next_state))
+            .kbgp_navigation()
+            .kbgp_initial_focus()
+            .clicked()
+        {
             state.set(next_state).unwrap();
             ui.ctx().kbgp_clear_input();
         }
@@ -152,7 +168,11 @@ fn ui_system(
                 } else {
                     KbgpInput::format_chord(settable_chord.iter().cloned())
                 };
-                if let Some(chord) = ui.button(text).kbgp_navigation().kbgp_pending_chord_same_source() {
+                if let Some(chord) = ui
+                    .button(text)
+                    .kbgp_navigation()
+                    .kbgp_pending_chord_same_source()
+                {
                     *settable_chord = chord;
                 }
             }
@@ -170,7 +190,11 @@ fn ui_system(
                     } else {
                         "N/A".to_owned()
                     };
-                    if let Some(input) = ui.button(text).kbgp_navigation().kbgp_pending_input_of_gamepad(*gamepad) {
+                    if let Some(input) = ui
+                        .button(text)
+                        .kbgp_navigation()
+                        .kbgp_pending_input_of_gamepad(*gamepad)
+                    {
                         *settable_input = Some(input);
                     }
                 }
@@ -189,7 +213,11 @@ fn ui_system(
                     } else {
                         KbgpInput::format_chord(settable_chord.iter().cloned())
                     };
-                    if let Some(chord) = ui.button(text).kbgp_navigation().kbgp_pending_chord_of_gamepad(*gamepad) {
+                    if let Some(chord) = ui
+                        .button(text)
+                        .kbgp_navigation()
+                        .kbgp_pending_chord_of_gamepad(*gamepad)
+                    {
                         *settable_chord = chord;
                     }
                 }
@@ -198,10 +226,7 @@ fn ui_system(
     });
 }
 
-fn empty_state_system(
-    mut egui_context: ResMut<EguiContext>,
-    mut state: ResMut<State<MenuState>>,
-) {
+fn empty_state_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<State<MenuState>>) {
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
         menu_controls(ui, &mut state);
     });
