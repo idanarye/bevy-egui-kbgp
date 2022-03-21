@@ -5,12 +5,14 @@ edition = "2021"
 authors = ["IdanArye <idanarye@gmail.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/idanarye/bevy-egui-kbgp"
+readme = "README.md"
+keywords = ["bevy", "egui", "input"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bevy = { version = "0.6.1", default-features = false }
-bevy_egui = "0.12"
+bevy_egui = { version = "0.12", default-features = false }
 
 [dev-dependencies]
 bevy = { version = "0.6.1", default-features = false, features = ["bevy_gilrs"] }
