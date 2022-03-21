@@ -43,6 +43,20 @@ impl<'a> KbgpInputManualHandle<'a> {
                             .received_input
                             .remove(&KbgpInput::GamepadAxisPositive(*gamepad_axis));
                     }
+                    KbgpInput::MouseWheelUp => {
+                        self.state.received_input.remove(&KbgpInput::MouseWheelDown);
+                    }
+                    KbgpInput::MouseWheelDown => {
+                        self.state.received_input.remove(&KbgpInput::MouseWheelUp);
+                    }
+                    KbgpInput::MouseWheelLeft => {
+                        self.state
+                            .received_input
+                            .remove(&KbgpInput::MouseWheelRight);
+                    }
+                    KbgpInput::MouseWheelRight => {
+                        self.state.received_input.remove(&KbgpInput::MouseWheelLeft);
+                    }
                     _ => {}
                 }
                 self.state.received_input.insert(input.clone());
