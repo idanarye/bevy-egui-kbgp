@@ -109,6 +109,7 @@ impl KbgpPendingInputState {
     }
 }
 
+/// An option of [`KbgpPrepare`](crate::KbgpPrepare).
 pub struct KbgpPreparePendingInput {
     current_input: Vec<KbgpInput>,
 }

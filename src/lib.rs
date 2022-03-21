@@ -343,6 +343,9 @@ pub trait KbgpEguiResponseExt {
     /// }
     fn kbgp_pending_input(&self) -> Option<KbgpInput>;
 
+    /// Accept a single key/button input from this widget, limited to a specific gamepad.
+    ///
+    /// Passing `None` for the gamepad argument will accept input from the keyboard/mouse.
     fn kbgp_pending_input_of_gamepad(&self, gamepad: Option<Gamepad>) -> Option<KbgpInput>;
 
     /// Accept a chord of key/button inputs from this widget.
@@ -386,9 +389,17 @@ pub trait KbgpEguiResponseExt {
     /// }
     fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
 
+    /// Accept a chord of key/button inputs from this widget, limited to a specific gamepad.
+    ///
+    /// Passing `None` for the gamepad argument will accept input from the keyboard/mouse.
     fn kbgp_pending_chord_of_gamepad(&self, gamepad: Option<Gamepad>)
         -> Option<HashSet<KbgpInput>>;
 
+    /// Accept a chord of key/button inputs from this widget, where all inputs are from the same
+    /// source.
+    ///
+    /// "Same source" means either all the inputs are from the same gamepad, or all the inputs are
+    /// from the keyboard and the mouse.
     fn kbgp_pending_chord_same_source(&self) -> Option<HashSet<KbgpInput>>;
 
     /// Helper for manually implementing custom methods for input-setting
@@ -618,6 +629,7 @@ impl KbgpInput {
         chord_text
     }
 
+    /// Return the gamepad responsible for this input, or `None` for keyboard/mouse inputs.
     pub fn get_gamepad(&self) -> Option<Gamepad> {
         match self {
             KbgpInput::Keyboard(_) => None,
