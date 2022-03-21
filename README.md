@@ -26,6 +26,7 @@ Try it out in https://idanarye.github.io/bevy-egui-kbgp/demos/example
 
 * Support for comboboxes.
 * Figure out how to support navigating out of textboxes.
+* More navigation keys (back key, configurable keys...)
 
 ## Versions
 
