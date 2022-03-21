@@ -347,6 +347,10 @@ pub trait KbgpEguiResponseExt {
     /// Accept a single key/button input from this widget, limited to a specific input source.
     fn kbgp_pending_input_of_source(&self, source: KbgpInputSource) -> Option<KbgpInput>;
 
+    /// Accept a single key/button input from this widget, with the ability to filter which inputs
+    /// to accept.
+    fn kbgp_pending_input_vetted(&self, pred: impl FnMut(KbgpInput) -> bool) -> Option<KbgpInput>;
+
     /// Accept a chord of key/button inputs from this widget.
     ///
     /// Must be called on widgets that had
@@ -397,6 +401,16 @@ pub trait KbgpEguiResponseExt {
     /// "Same source" means either all the inputs are from the same gamepad, or all the inputs are
     /// from the keyboard and the mouse.
     fn kbgp_pending_chord_same_source(&self) -> Option<HashSet<KbgpInput>>;
+
+    /// Accept a chord of key/button inputs from this widget, with the ability to filter which
+    /// inputs to accept.
+    ///
+    /// The predicate accepts as a first argument the inputs that already participate in the chord,
+    /// to allow vetting the new input based on them.
+    fn kbgp_pending_chord_vetted(
+        &self,
+        pred: impl FnMut(&HashSet<KbgpInput>, KbgpInput) -> bool,
+    ) -> Option<HashSet<KbgpInput>>;
 
     /// Helper for manually implementing custom methods for input-setting
     ///
@@ -481,33 +495,19 @@ impl KbgpEguiResponseExt for egui::Response {
     }
 
     fn kbgp_pending_input(&self) -> Option<KbgpInput> {
-        self.kbgp_pending_input_manual(|response, mut hnd| {
-            hnd.process_new_input(|hnd, _| hnd.received_input().is_empty());
-            hnd.show_current_chord(response);
-            if hnd
-                .input_this_frame()
-                .any(|inp| hnd.received_input().contains(&inp))
-            {
-                None
-            } else {
-                let mut it = hnd.received_input().iter();
-                let single_input = it.next();
-                assert!(
-                    it.next().is_none(),
-                    "More than one input in chord, but limit is 1"
-                );
-                // This will not be empty and we'll return a value if and only if there was some
-                // input in received_input.
-                single_input.cloned()
-            }
-        })
+        self.kbgp_pending_input_vetted(|_| true)
     }
 
     fn kbgp_pending_input_of_source(&self, source: KbgpInputSource) -> Option<KbgpInput> {
+        self.kbgp_pending_input_vetted(|input| input.get_source() == source)
+    }
+
+    fn kbgp_pending_input_vetted(
+        &self,
+        mut pred: impl FnMut(KbgpInput) -> bool,
+    ) -> Option<KbgpInput> {
         self.kbgp_pending_input_manual(|response, mut hnd| {
-            hnd.process_new_input(|hnd, input| {
-                input.get_source() == source && hnd.received_input().is_empty()
-            });
+            hnd.process_new_input(|hnd, input| hnd.received_input().is_empty() && pred(input));
             hnd.show_current_chord(response);
             if hnd
                 .input_this_frame()
@@ -529,38 +529,29 @@ impl KbgpEguiResponseExt for egui::Response {
     }
 
     fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>> {
-        self.kbgp_pending_input_manual(|response, mut hnd| {
-            hnd.process_new_input(|_, _| true);
-            hnd.show_current_chord(response);
-            if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
-                None
-            } else {
-                Some(hnd.received_input().clone())
-            }
-        })
+        self.kbgp_pending_chord_vetted(|_, _| true)
     }
 
     fn kbgp_pending_chord_of_source(&self, source: KbgpInputSource) -> Option<HashSet<KbgpInput>> {
-        self.kbgp_pending_input_manual(|response, mut hnd| {
-            hnd.process_new_input(|_, input| input.get_source() == source);
-            hnd.show_current_chord(response);
-            if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
-                None
+        self.kbgp_pending_chord_vetted(|_, input| input.get_source() == source)
+    }
+
+    fn kbgp_pending_chord_same_source(&self) -> Option<HashSet<KbgpInput>> {
+        self.kbgp_pending_chord_vetted(|existing, input| {
+            if let Some(existing_input) = existing.iter().next() {
+                input.get_source() == existing_input.get_source()
             } else {
-                Some(hnd.received_input().clone())
+                true
             }
         })
     }
 
-    fn kbgp_pending_chord_same_source(&self) -> Option<HashSet<KbgpInput>> {
+    fn kbgp_pending_chord_vetted(
+        &self,
+        mut pred: impl FnMut(&HashSet<KbgpInput>, KbgpInput) -> bool,
+    ) -> Option<HashSet<KbgpInput>> {
         self.kbgp_pending_input_manual(|response, mut hnd| {
-            hnd.process_new_input(|hnd, input| {
-                if let Some(existing_input) = hnd.received_input().iter().next() {
-                    input.get_source() == existing_input.get_source()
-                } else {
-                    true
-                }
-            });
+            hnd.process_new_input(|hnd, input| pred(hnd.received_input(), input));
             hnd.show_current_chord(response);
             if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
                 None
