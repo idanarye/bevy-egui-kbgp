@@ -580,6 +580,7 @@ impl core::fmt::Display for KbgpInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             KbgpInput::Keyboard(key) => write!(f, "{:?}", key)?,
+            KbgpInput::MouseButton(MouseButton::Other(button)) => write!(f, "MouseButton{:?}", button)?,
             KbgpInput::MouseButton(button) => write!(f, "Mouse{:?}", button)?,
             KbgpInput::MouseWheelUp => write!(f, "MouseScrollUp")?,
             KbgpInput::MouseWheelDown => write!(f, "MouseScrollDown")?,
