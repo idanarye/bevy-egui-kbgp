@@ -67,6 +67,7 @@ pub mod prelude {
     pub use crate::KbgpEguiResponseExt;
     pub use crate::KbgpEguiUiCtxExt;
     pub use crate::KbgpInput;
+    pub use crate::KbgpInputSource;
     pub use crate::KbgpPlugin;
     pub use crate::KbgpSettings;
 }
@@ -343,10 +344,8 @@ pub trait KbgpEguiResponseExt {
     /// }
     fn kbgp_pending_input(&self) -> Option<KbgpInput>;
 
-    /// Accept a single key/button input from this widget, limited to a specific gamepad.
-    ///
-    /// Passing `None` for the gamepad argument will accept input from the keyboard/mouse.
-    fn kbgp_pending_input_of_gamepad(&self, gamepad: Option<Gamepad>) -> Option<KbgpInput>;
+    /// Accept a single key/button input from this widget, limited to a specific input source.
+    fn kbgp_pending_input_of_source(&self, source: KbgpInputSource) -> Option<KbgpInput>;
 
     /// Accept a chord of key/button inputs from this widget.
     ///
@@ -389,11 +388,8 @@ pub trait KbgpEguiResponseExt {
     /// }
     fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
 
-    /// Accept a chord of key/button inputs from this widget, limited to a specific gamepad.
-    ///
-    /// Passing `None` for the gamepad argument will accept input from the keyboard/mouse.
-    fn kbgp_pending_chord_of_gamepad(&self, gamepad: Option<Gamepad>)
-        -> Option<HashSet<KbgpInput>>;
+    /// Accept a chord of key/button inputs from this widget, limited to a specific input source.
+    fn kbgp_pending_chord_of_source(&self, source: KbgpInputSource) -> Option<HashSet<KbgpInput>>;
 
     /// Accept a chord of key/button inputs from this widget, where all inputs are from the same
     /// source.
@@ -507,10 +503,10 @@ impl KbgpEguiResponseExt for egui::Response {
         })
     }
 
-    fn kbgp_pending_input_of_gamepad(&self, gamepad: Option<Gamepad>) -> Option<KbgpInput> {
+    fn kbgp_pending_input_of_source(&self, source: KbgpInputSource) -> Option<KbgpInput> {
         self.kbgp_pending_input_manual(|response, mut hnd| {
             hnd.process_new_input(|hnd, input| {
-                input.get_gamepad() == gamepad && hnd.received_input().is_empty()
+                input.get_source() == source && hnd.received_input().is_empty()
             });
             hnd.show_current_chord(response);
             if hnd
@@ -544,12 +540,9 @@ impl KbgpEguiResponseExt for egui::Response {
         })
     }
 
-    fn kbgp_pending_chord_of_gamepad(
-        &self,
-        gamepad: Option<Gamepad>,
-    ) -> Option<HashSet<KbgpInput>> {
+    fn kbgp_pending_chord_of_source(&self, source: KbgpInputSource) -> Option<HashSet<KbgpInput>> {
         self.kbgp_pending_input_manual(|response, mut hnd| {
-            hnd.process_new_input(|_, input| input.get_gamepad() == gamepad);
+            hnd.process_new_input(|_, input| input.get_source() == source);
             hnd.show_current_chord(response);
             if hnd.input_this_frame().any(|_| true) || hnd.received_input().is_empty() {
                 None
@@ -563,7 +556,7 @@ impl KbgpEguiResponseExt for egui::Response {
         self.kbgp_pending_input_manual(|response, mut hnd| {
             hnd.process_new_input(|hnd, input| {
                 if let Some(existing_input) = hnd.received_input().iter().next() {
-                    input.get_gamepad() == existing_input.get_gamepad()
+                    input.get_source() == existing_input.get_source()
                 } else {
                     true
                 }
@@ -629,18 +622,51 @@ impl KbgpInput {
         chord_text
     }
 
-    /// Return the gamepad responsible for this input, or `None` for keyboard/mouse inputs.
-    pub fn get_gamepad(&self) -> Option<Gamepad> {
+    /// Return the source responsible for this input.
+    pub fn get_source(&self) -> KbgpInputSource {
         match self {
-            KbgpInput::Keyboard(_) => None,
-            KbgpInput::MouseButton(_) => None,
-            KbgpInput::MouseWheelUp => None,
-            KbgpInput::MouseWheelDown => None,
-            KbgpInput::MouseWheelLeft => None,
-            KbgpInput::MouseWheelRight => None,
-            KbgpInput::GamepadAxisPositive(GamepadAxis(gamepad, _)) => Some(*gamepad),
-            KbgpInput::GamepadAxisNegative(GamepadAxis(gamepad, _)) => Some(*gamepad),
-            KbgpInput::GamepadButton(GamepadButton(gamepad, _)) => Some(*gamepad),
+            KbgpInput::Keyboard(_) => KbgpInputSource::KeyboardAndMouse,
+            KbgpInput::MouseButton(_) => KbgpInputSource::KeyboardAndMouse,
+            KbgpInput::MouseWheelUp => KbgpInputSource::KeyboardAndMouse,
+            KbgpInput::MouseWheelDown => KbgpInputSource::KeyboardAndMouse,
+            KbgpInput::MouseWheelLeft => KbgpInputSource::KeyboardAndMouse,
+            KbgpInput::MouseWheelRight => KbgpInputSource::KeyboardAndMouse,
+            KbgpInput::GamepadAxisPositive(GamepadAxis(gamepad, _)) => {
+                KbgpInputSource::Gamepad(*gamepad)
+            }
+            KbgpInput::GamepadAxisNegative(GamepadAxis(gamepad, _)) => {
+                KbgpInputSource::Gamepad(*gamepad)
+            }
+            KbgpInput::GamepadButton(GamepadButton(gamepad, _)) => {
+                KbgpInputSource::Gamepad(*gamepad)
+            }
+        }
+    }
+}
+
+/// Input from the keyboard or from a gamepad.
+#[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
+pub enum KbgpInputSource {
+    KeyboardAndMouse,
+    Gamepad(Gamepad),
+}
+
+/// A source of input for chords
+impl core::fmt::Display for KbgpInputSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KbgpInputSource::KeyboardAndMouse => write!(f, "Keyboard&Mouse"),
+            KbgpInputSource::Gamepad(Gamepad(gamepad)) => write!(f, "Gamepad {}", gamepad),
+        }
+    }
+}
+
+impl KbgpInputSource {
+    /// The gamepad of the source, of `None` if the source is keyboard or mouse.
+    pub fn gamepad(&self) -> Option<Gamepad> {
+        match self {
+            KbgpInputSource::KeyboardAndMouse => None,
+            KbgpInputSource::Gamepad(gamepad) => Some(*gamepad),
         }
     }
 }

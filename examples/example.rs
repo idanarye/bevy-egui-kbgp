@@ -78,8 +78,8 @@ fn ui_system(
     mut settable_chords: Local<Vec<HashSet<KbgpInput>>>,
     mut settable_same_source_chords: Local<Vec<HashSet<KbgpInput>>>,
     gamepads: Res<Gamepads>,
-    mut settable_inputs_of_gamepad: Local<Vec<(Option<Gamepad>, Vec<Option<KbgpInput>>)>>,
-    mut settable_chords_of_gamepad: Local<Vec<(Option<Gamepad>, Vec<HashSet<KbgpInput>>)>>,
+    mut settable_inputs_of_source: Local<Vec<(KbgpInputSource, Vec<Option<KbgpInput>>)>>,
+    mut settable_chords_of_source: Local<Vec<(KbgpInputSource, Vec<HashSet<KbgpInput>>)>>,
 ) {
     if settable_inputs.is_empty() {
         for _ in 0..3 {
@@ -93,15 +93,15 @@ fn ui_system(
             }
         }
     }
-    let mut keyboard_and_all_gamepads = vec![None];
-    keyboard_and_all_gamepads.extend(gamepads.iter().copied().map(Some));
-    while settable_inputs_of_gamepad.len() < keyboard_and_all_gamepads.len() {
-        let gamepad = keyboard_and_all_gamepads[settable_inputs_of_gamepad.len()];
-        settable_inputs_of_gamepad.push((gamepad, vec![None; 3]));
+    let mut all_input_sources = vec![KbgpInputSource::KeyboardAndMouse];
+    all_input_sources.extend(gamepads.iter().copied().map(KbgpInputSource::Gamepad));
+    while settable_inputs_of_source.len() < all_input_sources.len() {
+        let source = all_input_sources[settable_inputs_of_source.len()];
+        settable_inputs_of_source.push((source, vec![None; 3]));
     }
-    while settable_chords_of_gamepad.len() < keyboard_and_all_gamepads.len() {
-        let gamepad = keyboard_and_all_gamepads[settable_chords_of_gamepad.len()];
-        settable_chords_of_gamepad.push((gamepad, vec![Default::default(); 3]));
+    while settable_chords_of_source.len() < all_input_sources.len() {
+        let source = all_input_sources[settable_chords_of_source.len()];
+        settable_chords_of_source.push((source, vec![Default::default(); 3]));
     }
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
         menu_controls(ui, &mut state);
@@ -177,13 +177,9 @@ fn ui_system(
                 }
             }
         });
-        for (gamepad, settable_inputs) in settable_inputs_of_gamepad.iter_mut() {
+        for (source, settable_inputs) in settable_inputs_of_source.iter_mut() {
             ui.horizontal(|ui| {
-                if let Some(gamepad) = gamepad {
-                    ui.label(format!("Set key ({:?} only):", gamepad));
-                } else {
-                    ui.label("Set key (keyboard only):");
-                }
+                ui.label(format!("Set key ({}):", source));
                 for settable_input in settable_inputs.iter_mut() {
                     let text = if let Some(input) = settable_input {
                         format!("{}", input)
@@ -193,20 +189,16 @@ fn ui_system(
                     if let Some(input) = ui
                         .button(text)
                         .kbgp_navigation()
-                        .kbgp_pending_input_of_gamepad(*gamepad)
+                        .kbgp_pending_input_of_source(*source)
                     {
                         *settable_input = Some(input);
                     }
                 }
             });
         }
-        for (gamepad, settable_chords) in settable_chords_of_gamepad.iter_mut() {
+        for (source, settable_chords) in settable_chords_of_source.iter_mut() {
             ui.horizontal(|ui| {
-                if let Some(gamepad) = gamepad {
-                    ui.label(format!("Set chord ({:?} only):", gamepad));
-                } else {
-                    ui.label("Set chord (keyboard only):");
-                }
+                ui.label(format!("Set chord ({}):", source));
                 for settable_chord in settable_chords.iter_mut() {
                     let text = if settable_chord.is_empty() {
                         "N/A".to_owned()
@@ -216,7 +208,7 @@ fn ui_system(
                     if let Some(chord) = ui
                         .button(text)
                         .kbgp_navigation()
-                        .kbgp_pending_chord_of_gamepad(*gamepad)
+                        .kbgp_pending_chord_of_source(*source)
                     {
                         *settable_chord = chord;
                     }
