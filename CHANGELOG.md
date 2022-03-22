@@ -5,8 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Fix a bug where `kbgp_initial_focus` would only be applied on the first time
+  a UI is shown.
 
-## 0.1.0 - 2022-03-21
+## 0.1.1 - 2022-03-21
 ### Fixed
 - Fix a bug where `kbgp_system_default_input` would happen before bevy_egui's `begin_frame`.
 

@@ -215,11 +215,17 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
             state.prepare(common, egui_ctx, |prp| {
                 prepare_dlg(KbgpPrepare::Navigation(prp))
             });
+            if kbgp.common.nodes.is_empty() {
+                kbgp.state = KbgpState::Inactive;
+            }
         }
         KbgpState::PendingInput(state) => {
             state.prepare(common, egui_ctx, |prp| {
                 prepare_dlg(KbgpPrepare::PendingInput(prp))
             });
+            if kbgp.common.nodes.is_empty() {
+                kbgp.state = KbgpState::Inactive;
+            }
         }
     }
 }
