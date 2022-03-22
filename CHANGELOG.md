@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 0.1.2 - 2022-03-22
 ### Fixed
 - Fix a bug where `kbgp_initial_focus` would only be applied on the first time
   a UI is shown.
