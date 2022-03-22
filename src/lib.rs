@@ -71,9 +71,9 @@ use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::EguiContext;
 
-pub use self::navigation::{KbgpNavBindings, KbgpNavAction};
 use self::navigation::KbgpNavigationState;
 use self::navigation::KbgpPrepareNavigation;
+pub use self::navigation::{KbgpNavAction, KbgpNavBindings};
 use self::pending_input::KbgpPendingInputState;
 pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
@@ -86,10 +86,10 @@ pub mod prelude {
     pub use crate::KbgpEguiUiCtxExt;
     pub use crate::KbgpInput;
     pub use crate::KbgpInputSource;
+    pub use crate::KbgpNavAction;
+    pub use crate::KbgpNavBindings;
     pub use crate::KbgpPlugin;
     pub use crate::KbgpSettings;
-    pub use crate::KbgpNavBindings;
-    pub use crate::KbgpNavAction;
 }
 
 /// Adds KBGP input handling system and [`KbgpSettings`](crate::KbgpSettings).
@@ -262,7 +262,12 @@ fn kbgp_system_default_input(
                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);
             }
             if settings.allow_gamepads {
-                prp.navigate_gamepad_by_binding(&gamepads, &gamepad_axes, &gamepad_buttons, &settings.bindings.gamepad_buttons);
+                prp.navigate_gamepad_by_binding(
+                    &gamepads,
+                    &gamepad_axes,
+                    &gamepad_buttons,
+                    &settings.bindings.gamepad_buttons,
+                );
             }
         }
         KbgpPrepare::PendingInput(prp) => {

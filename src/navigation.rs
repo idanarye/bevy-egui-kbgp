@@ -51,7 +51,11 @@ impl KbgpPrepareNavigation {
     }
 
     /// Navigate the UI with the keyboard.
-    pub fn navigate_keyboard_by_binding(&mut self, keys: &Input<KeyCode>, binding: &HashMap<KeyCode, KbgpNavAction>) {
+    pub fn navigate_keyboard_by_binding(
+        &mut self,
+        keys: &Input<KeyCode>,
+        binding: &HashMap<KeyCode, KbgpNavAction>,
+    ) {
         for key in keys.get_pressed() {
             if let Some(action) = binding.get(key) {
                 self.apply_action(*action);
@@ -71,14 +75,26 @@ impl KbgpPrepareNavigation {
     ) {
         for gamepad in gamepads.iter() {
             for (axis_type, action_for_negative, action_for_positive) in [
-                (GamepadAxisType::DPadX, KbgpNavAction::NavigateLeft, KbgpNavAction::NavigateRight),
-                (GamepadAxisType::DPadY, KbgpNavAction::NavigateDown, KbgpNavAction::NavigateUp),
+                (
+                    GamepadAxisType::DPadX,
+                    KbgpNavAction::NavigateLeft,
+                    KbgpNavAction::NavigateRight,
+                ),
+                (
+                    GamepadAxisType::DPadY,
+                    KbgpNavAction::NavigateDown,
+                    KbgpNavAction::NavigateUp,
+                ),
                 (
                     GamepadAxisType::LeftStickX,
                     KbgpNavAction::NavigateLeft,
                     KbgpNavAction::NavigateRight,
                 ),
-                (GamepadAxisType::LeftStickY, KbgpNavAction::NavigateDown, KbgpNavAction::NavigateUp),
+                (
+                    GamepadAxisType::LeftStickY,
+                    KbgpNavAction::NavigateDown,
+                    KbgpNavAction::NavigateUp,
+                ),
             ] {
                 if let Some(axis_value) = axes.get(GamepadAxis(*gamepad, axis_type)) {
                     if axis_value < -0.5 {
@@ -311,7 +327,10 @@ impl Default for KbgpNavBindings {
             .with_gamepad_button(GamepadButtonType::DPadDown, KbgpNavAction::NavigateDown)
             .with_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavAction::NavigateLeft)
             .with_gamepad_button(GamepadButtonType::DPadRight, KbgpNavAction::NavigateRight)
-            .with_gamepad_button(GamepadButtonType::South, KbgpNavAction::Activate(egui::PointerButton::Primary))
+            .with_gamepad_button(
+                GamepadButtonType::South,
+                KbgpNavAction::Activate(egui::PointerButton::Primary),
+            )
             .with_gamepad_button(GamepadButtonType::East, KbgpNavAction::Cancel)
     }
 }
@@ -333,11 +352,19 @@ impl KbgpNavBindings {
         self
     }
 
-    pub fn bind_gamepad_button(&mut self, gamepad_button: GamepadButtonType, action: KbgpNavAction) {
+    pub fn bind_gamepad_button(
+        &mut self,
+        gamepad_button: GamepadButtonType,
+        action: KbgpNavAction,
+    ) {
         self.gamepad_buttons.insert(gamepad_button, action);
     }
 
-    pub fn with_gamepad_button(mut self, gamepad_button: GamepadButtonType, action: KbgpNavAction) -> Self {
+    pub fn with_gamepad_button(
+        mut self,
+        gamepad_button: GamepadButtonType,
+        action: KbgpNavAction,
+    ) -> Self {
         self.bind_gamepad_button(gamepad_button, action);
         self
     }

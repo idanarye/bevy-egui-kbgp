@@ -27,7 +27,7 @@ fn main() {
                 .with_key(KeyCode::W, KbgpNavAction::NavigateUp)
                 .with_key(KeyCode::A, KbgpNavAction::NavigateLeft)
                 .with_key(KeyCode::S, KbgpNavAction::NavigateDown)
-                .with_key(KeyCode::D, KbgpNavAction::NavigateRight)
+                .with_key(KeyCode::D, KbgpNavAction::NavigateRight),
         })
         .add_state(MenuState::Main)
         .add_system_set(SystemSet::on_update(MenuState::Main).with_system(ui_system))
