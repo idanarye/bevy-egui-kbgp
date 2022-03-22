@@ -71,8 +71,9 @@ use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::EguiContext;
 
+pub use self::navigation::{KbgpNavBindings, KbgpNavAction};
 use self::navigation::KbgpNavigationState;
-pub use self::navigation::KbgpPrepareNavigation;
+use self::navigation::KbgpPrepareNavigation;
 use self::pending_input::KbgpPendingInputState;
 pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
@@ -87,6 +88,8 @@ pub mod prelude {
     pub use crate::KbgpInputSource;
     pub use crate::KbgpPlugin;
     pub use crate::KbgpSettings;
+    pub use crate::KbgpNavBindings;
+    pub use crate::KbgpNavAction;
 }
 
 /// Adds KBGP input handling system and [`KbgpSettings`](crate::KbgpSettings).
@@ -118,6 +121,8 @@ pub struct KbgpSettings {
     pub allow_mouse_wheel_sideways: bool,
     /// Whether or not gamepads input is accepted for navigation and for chords.
     pub allow_gamepads: bool,
+
+    pub bindings: KbgpNavBindings,
 }
 
 impl Default for KbgpSettings {
@@ -128,6 +133,7 @@ impl Default for KbgpSettings {
             allow_mouse_wheel: false,
             allow_mouse_wheel_sideways: false,
             allow_gamepads: true,
+            bindings: Default::default(),
         }
     }
 }
@@ -178,12 +184,13 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///     gamepad_axes: Res<Axis<GamepadAxis>>,
 ///     gamepad_buttons: Res<Input<GamepadButton>>,
 ///     mouse_buttons: Res<Input<MouseButton>>,
+///     settings: Res<KbgpSettings>,
 /// ) {
 ///     kbgp_prepare(egui_context.ctx_mut(), |prp| {
 ///         match prp {
 ///             KbgpPrepare::Navigation(prp) => {
-///                 prp.navigate_keyboard_default(&keys);
-///                 prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+///                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);
+///                 prp.navigate_gamepad_by_binding(&gamepads, &gamepad_axes, &gamepad_buttons, &settings.bindings.gamepad_buttons);
 ///             }
 ///             KbgpPrepare::PendingInput(prp) => {
 ///                 prp.accept_keyboard_input(&keys);
@@ -252,10 +259,10 @@ fn kbgp_system_default_input(
     kbgp_prepare(egui_context.ctx_mut(), |prp| match prp {
         KbgpPrepare::Navigation(prp) => {
             if settings.allow_keyboard {
-                prp.navigate_keyboard_default(&keys);
+                prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);
             }
             if settings.allow_gamepads {
-                prp.navigate_gamepad_default(&gamepads, &gamepad_axes, &gamepad_buttons);
+                prp.navigate_gamepad_by_binding(&gamepads, &gamepad_axes, &gamepad_buttons, &settings.bindings.gamepad_buttons);
             }
         }
         KbgpPrepare::PendingInput(prp) => {

@@ -1,5 +1,6 @@
 use crate::egui;
 use bevy::prelude::*;
+use bevy::utils::HashMap;
 
 use crate::KbgpCommon;
 
@@ -36,56 +37,24 @@ pub struct KbgpPrepareNavigation {
 }
 
 impl KbgpPrepareNavigation {
-    /// Move the focus one widget up. If no widget has the focus - move up from the bottom.
-    ///
-    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
-    /// called on the currently focused widget, and can only target widgets marked
-    /// `kbgp_navigation` was called on.
-    pub fn navigate_up(&mut self) {
-        self.input |= INPUT_MASK_UP;
+    pub fn apply_action(&mut self, action: KbgpNavAction) {
+        self.input |= match action {
+            KbgpNavAction::NavigateUp => INPUT_MASK_UP,
+            KbgpNavAction::NavigateDown => INPUT_MASK_DOWN,
+            KbgpNavAction::NavigateLeft => INPUT_MASK_LEFT,
+            KbgpNavAction::NavigateRight => INPUT_MASK_RIGHT,
+            KbgpNavAction::Activate(egui::PointerButton::Primary) => INPUT_MASK_CLICK,
+            KbgpNavAction::Activate(egui::PointerButton::Secondary) => todo!(),
+            KbgpNavAction::Activate(egui::PointerButton::Middle) => todo!(),
+            KbgpNavAction::Cancel => todo!(),
+        };
     }
 
-    /// Move the focus one widget down. If no widget has the focus - move down from the top.
-    ///
-    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
-    /// called on the currently focused widget, and can only target widgets marked
-    /// `kbgp_navigation` was called on.
-    pub fn navigate_down(&mut self) {
-        self.input |= INPUT_MASK_DOWN;
-    }
-
-    /// Move the focus one widget left. If no widget has the focus - move left from the right.
-    ///
-    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
-    /// called on the currently focused widget, and can only target widgets marked
-    /// `kbgp_navigation` was called on.
-    pub fn navigate_left(&mut self) {
-        self.input |= INPUT_MASK_LEFT;
-    }
-
-    /// Move the focus one widget right. If no widget has the focus - move right from the left.
-    ///
-    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
-    /// called on the currently focused widget, and can only target widgets marked
-    /// `kbgp_navigation` was called on.
-    pub fn navigate_right(&mut self) {
-        self.input |= INPUT_MASK_RIGHT;
-    }
-
-    /// Make egui think the player pressed Enter.
-    pub fn emulate_click(&mut self) {
-        self.input |= INPUT_MASK_CLICK;
-    }
-
-    /// Navigate the UI with arrow keys.
-    pub fn navigate_keyboard_default(&mut self, keys: &Input<KeyCode>) {
+    /// Navigate the UI with the keyboard.
+    pub fn navigate_keyboard_by_binding(&mut self, keys: &Input<KeyCode>, binding: &HashMap<KeyCode, KbgpNavAction>) {
         for key in keys.get_pressed() {
-            match key {
-                KeyCode::Up => self.navigate_up(),
-                KeyCode::Down => self.navigate_down(),
-                KeyCode::Left => self.navigate_left(),
-                KeyCode::Right => self.navigate_right(),
-                _ => (),
+            if let Some(action) = binding.get(key) {
+                self.apply_action(*action);
             }
         }
     }
@@ -93,43 +62,36 @@ impl KbgpPrepareNavigation {
     /// Navigate the UI with gamepads.
     ///
     /// * Use both left stick and d-pad for navigation.
-    /// * Use both the south button and the start button for activation.
-    pub fn navigate_gamepad_default(
+    pub fn navigate_gamepad_by_binding(
         &mut self,
         gamepads: &Gamepads,
         axes: &Axis<GamepadAxis>,
         buttons: &Input<GamepadButton>,
+        binding: &HashMap<GamepadButtonType, KbgpNavAction>,
     ) {
         for gamepad in gamepads.iter() {
-            for (axis_type, mask_for_negative, mask_for_positive) in [
-                (GamepadAxisType::DPadX, INPUT_MASK_LEFT, INPUT_MASK_RIGHT),
-                (GamepadAxisType::DPadY, INPUT_MASK_DOWN, INPUT_MASK_UP),
+            for (axis_type, action_for_negative, action_for_positive) in [
+                (GamepadAxisType::DPadX, KbgpNavAction::NavigateLeft, KbgpNavAction::NavigateRight),
+                (GamepadAxisType::DPadY, KbgpNavAction::NavigateDown, KbgpNavAction::NavigateUp),
                 (
                     GamepadAxisType::LeftStickX,
-                    INPUT_MASK_LEFT,
-                    INPUT_MASK_RIGHT,
+                    KbgpNavAction::NavigateLeft,
+                    KbgpNavAction::NavigateRight,
                 ),
-                (GamepadAxisType::LeftStickY, INPUT_MASK_DOWN, INPUT_MASK_UP),
+                (GamepadAxisType::LeftStickY, KbgpNavAction::NavigateDown, KbgpNavAction::NavigateUp),
             ] {
                 if let Some(axis_value) = axes.get(GamepadAxis(*gamepad, axis_type)) {
                     if axis_value < -0.5 {
-                        self.input |= mask_for_negative;
+                        self.apply_action(action_for_negative)
                     } else if 0.5 < axis_value {
-                        self.input |= mask_for_positive;
+                        self.apply_action(action_for_positive)
                     }
                 }
             }
         }
         for GamepadButton(_, button_type) in buttons.get_pressed() {
-            match button_type {
-                GamepadButtonType::DPadUp => self.navigate_up(),
-                GamepadButtonType::DPadDown => self.navigate_down(),
-                GamepadButtonType::DPadLeft => self.navigate_left(),
-                GamepadButtonType::DPadRight => self.navigate_right(),
-                GamepadButtonType::South => {
-                    self.emulate_click();
-                }
-                _ => (),
+            if let Some(action) = binding.get(button_type) {
+                self.apply_action(*action);
             }
         }
     }
@@ -296,5 +258,87 @@ impl KbgpNavigationState {
         if let Some(id) = move_to {
             self.move_focus = Some(*id);
         }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum KbgpNavAction {
+    /// Move the focus one widget up. If no widget has the focus - move up from the bottom.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
+    NavigateUp,
+    /// Move the focus one widget down. If no widget has the focus - move down from the top.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
+    NavigateDown,
+    /// Move the focus one widget left. If no widget has the focus - move left from the right.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
+    NavigateLeft,
+    /// Move the focus one widget right. If no widget has the focus - move right from the left.
+    ///
+    /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
+    /// called on the currently focused widget, and can only target widgets marked
+    /// `kbgp_navigation` was called on.
+    NavigateRight,
+    /// Make egui think the player clicked on the focused widget.
+    Activate(egui::PointerButton),
+    Cancel,
+}
+
+pub struct KbgpNavBindings {
+    pub keyboard: HashMap<KeyCode, KbgpNavAction>,
+    pub gamepad_buttons: HashMap<GamepadButtonType, KbgpNavAction>,
+}
+
+impl Default for KbgpNavBindings {
+    fn default() -> Self {
+        Self::empty()
+            // Keyboard binding. No need for Space and Enter - egui does them by default.
+            .with_key(KeyCode::Up, KbgpNavAction::NavigateUp)
+            .with_key(KeyCode::Down, KbgpNavAction::NavigateDown)
+            .with_key(KeyCode::Left, KbgpNavAction::NavigateLeft)
+            .with_key(KeyCode::Right, KbgpNavAction::NavigateRight)
+            // .with_key(KeyCode::Escape, KbgpNavAction::Cancel)
+            // Gamepad bindings. Axis type bindings are not configurable here.
+            .with_gamepad_button(GamepadButtonType::DPadUp, KbgpNavAction::NavigateUp)
+            .with_gamepad_button(GamepadButtonType::DPadDown, KbgpNavAction::NavigateDown)
+            .with_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavAction::NavigateLeft)
+            .with_gamepad_button(GamepadButtonType::DPadRight, KbgpNavAction::NavigateRight)
+            .with_gamepad_button(GamepadButtonType::South, KbgpNavAction::Activate(egui::PointerButton::Primary))
+            .with_gamepad_button(GamepadButtonType::East, KbgpNavAction::Cancel)
+    }
+}
+
+impl KbgpNavBindings {
+    pub fn empty() -> Self {
+        Self {
+            keyboard: Default::default(),
+            gamepad_buttons: Default::default(),
+        }
+    }
+
+    pub fn bind_key(&mut self, key: KeyCode, action: KbgpNavAction) {
+        self.keyboard.insert(key, action);
+    }
+
+    pub fn with_key(mut self, key: KeyCode, action: KbgpNavAction) -> Self {
+        self.bind_key(key, action);
+        self
+    }
+
+    pub fn bind_gamepad_button(&mut self, gamepad_button: GamepadButtonType, action: KbgpNavAction) {
+        self.gamepad_buttons.insert(gamepad_button, action);
+    }
+
+    pub fn with_gamepad_button(mut self, gamepad_button: GamepadButtonType, action: KbgpNavAction) -> Self {
+        self.bind_gamepad_button(gamepad_button, action);
+        self
     }
 }
