@@ -74,7 +74,7 @@ use bevy_egui::EguiContext;
 
 use self::navigation::KbgpNavigationState;
 use self::navigation::KbgpPrepareNavigation;
-pub use self::navigation::{KbgpNavCommand, KbgpNavActivation, KbgpNavBindings};
+pub use self::navigation::{KbgpNavActivation, KbgpNavBindings, KbgpNavCommand};
 use self::pending_input::KbgpPendingInputState;
 pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
@@ -87,9 +87,9 @@ pub mod prelude {
     pub use crate::KbgpEguiUiCtxExt;
     pub use crate::KbgpInput;
     pub use crate::KbgpInputSource;
-    pub use crate::KbgpNavCommand;
     pub use crate::KbgpNavActivation;
     pub use crate::KbgpNavBindings;
+    pub use crate::KbgpNavCommand;
     pub use crate::KbgpPlugin;
     pub use crate::KbgpSettings;
 }
@@ -248,6 +248,7 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
 ///   * DPad - navigation.
 ///   * Left stick - navigation.
 ///   * South face button (depends on model - usually X or A): widget activation.
+#[allow(clippy::too_many_arguments)]
 fn kbgp_system_default_input(
     mut egui_context: ResMut<EguiContext>,
     settings: Res<KbgpSettings>,
@@ -811,6 +812,7 @@ impl KbgpEguiUiCtxExt for egui::Context {
 
         let mut input = self.input_mut();
         input.pointer = Default::default();
+        #[allow(clippy::match_like_matches_macro)]
         input.events.retain(|event| match event {
             egui::Event::Key {
                 key: egui::Key::Space | egui::Key::Enter,
