@@ -340,6 +340,14 @@ pub enum KbgpNavCommand {
 impl KbgpNavCommand {
     /// Used to define user-commands.
     ///
+    /// To define a user command, the result of this function should be bound to a key or a gamepad
+    /// button in [`KbgpNavBindings`] which in turn should be placed inside the
+    /// [`KbgpSettings`](crate::KbgpSettings) resource. Then a widget's
+    /// [`kbgp_user_action`](crate::KbgpEguiResponseExt::kbgp_user_action) or
+    /// [`kbgp_activated`](crate::KbgpEguiResponseExt::kbgp_activated) or the
+    /// [`kbgp_user_action`](crate::KbgpEguiUiCtxExt::kbgp_user_action) on the UI handle can be
+    /// used to determine if the player activated this action.
+    ///
     /// ```no_run
     /// use bevy::prelude::*;
     /// use bevy_egui::{EguiContext, EguiPlugin};
