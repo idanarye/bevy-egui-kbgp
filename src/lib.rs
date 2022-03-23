@@ -73,7 +73,7 @@ use bevy_egui::EguiContext;
 
 use self::navigation::KbgpNavigationState;
 use self::navigation::KbgpPrepareNavigation;
-pub use self::navigation::{KbgpNavAction, KbgpNavBindings, KbgpNavActivation};
+pub use self::navigation::{KbgpNavAction, KbgpNavActivation, KbgpNavBindings};
 use self::pending_input::KbgpPendingInputState;
 pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
@@ -783,9 +783,7 @@ impl KbgpEguiUiCtxExt for egui::Context {
         match &kbgp.state {
             KbgpState::Inactive => None,
             KbgpState::PendingInput(_) => None,
-            KbgpState::Navigation(state) => {
-                state.user_action.as_ref()?.downcast_ref().cloned()
-            }
+            KbgpState::Navigation(state) => state.user_action.as_ref()?.downcast_ref().cloned(),
         }
     }
 }

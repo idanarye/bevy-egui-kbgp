@@ -41,9 +41,18 @@ fn main() {
                     .with_key(KeyCode::PageDown, KbgpNavAction::user(MyActions::NextMenu))
                     .with_key(KeyCode::Delete, KbgpNavAction::user(MyActions::Delete))
                     // Special actions - gamepad:
-                    .with_gamepad_button(GamepadButtonType::LeftTrigger, KbgpNavAction::user(MyActions::PrevMenu))
-                    .with_gamepad_button(GamepadButtonType::RightTrigger, KbgpNavAction::user(MyActions::NextMenu))
-                    .with_gamepad_button(GamepadButtonType::North, KbgpNavAction::user(MyActions::Delete))
+                    .with_gamepad_button(
+                        GamepadButtonType::LeftTrigger,
+                        KbgpNavAction::user(MyActions::PrevMenu),
+                    )
+                    .with_gamepad_button(
+                        GamepadButtonType::RightTrigger,
+                        KbgpNavAction::user(MyActions::NextMenu),
+                    )
+                    .with_gamepad_button(
+                        GamepadButtonType::North,
+                        KbgpNavAction::user(MyActions::Delete),
+                    )
             },
         })
         .add_state(MenuState::Main)
@@ -74,8 +83,7 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             .button(format!("<<{:?}<<", prev_state))
             .kbgp_navigation()
             .clicked()
-            ||
-            ui.kbgp_user_action() == Some(MyActions::PrevMenu)
+            || ui.kbgp_user_action() == Some(MyActions::PrevMenu)
         {
             state.set(prev_state).unwrap();
             ui.kbgp_clear_input();
@@ -88,8 +96,7 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             .kbgp_navigation()
             .kbgp_initial_focus()
             .clicked()
-            ||
-            ui.kbgp_user_action() == Some(MyActions::NextMenu)
+            || ui.kbgp_user_action() == Some(MyActions::NextMenu)
         {
             state.set(next_state).unwrap();
             ui.ctx().kbgp_clear_input();
@@ -145,7 +152,8 @@ fn ui_system(
                     KbgpNavActivation::Clicked => {
                         *counter += 1;
                     }
-                    KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete) => {
+                    KbgpNavActivation::ClickedSecondary
+                    | KbgpNavActivation::User(MyActions::Delete) => {
                         if 0 < *counter {
                             *counter -= 1;
                         }
@@ -174,7 +182,10 @@ fn ui_system(
         });
 
         fn check_for_delete_action(button: &egui::Response) -> bool {
-            matches!(button.kbgp_activated(), KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete))
+            matches!(
+                button.kbgp_activated(),
+                KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete)
+            )
         }
 
         ui.horizontal(|ui| {

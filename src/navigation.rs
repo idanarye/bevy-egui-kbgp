@@ -1,4 +1,4 @@
-use std::any::{TypeId, Any};
+use std::any::{Any, TypeId};
 
 use crate::egui;
 use bevy::prelude::*;
@@ -338,7 +338,7 @@ impl KbgpNavAction {
 pub struct KbgpNavBindings {
     keyboard: HashMap<KeyCode, KbgpNavAction>,
     gamepad_buttons: HashMap<GamepadButtonType, KbgpNavAction>,
-    user_action_types: HashSet::<TypeId>,
+    user_action_types: HashSet<TypeId>,
 }
 
 impl Default for KbgpNavBindings {
@@ -354,10 +354,7 @@ impl Default for KbgpNavBindings {
             .with_gamepad_button(GamepadButtonType::DPadDown, KbgpNavAction::NavigateDown)
             .with_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavAction::NavigateLeft)
             .with_gamepad_button(GamepadButtonType::DPadRight, KbgpNavAction::NavigateRight)
-            .with_gamepad_button(
-                GamepadButtonType::South,
-                KbgpNavAction::Click,
-            )
+            .with_gamepad_button(GamepadButtonType::South, KbgpNavAction::Click)
     }
 }
 
