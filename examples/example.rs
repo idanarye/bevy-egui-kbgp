@@ -32,10 +32,7 @@ fn main() {
             allow_gamepads: true,
             bindings: {
                 bevy_egui_kbgp::KbgpNavBindings::default()
-                    .with_key(KeyCode::W, KbgpNavCommand::NavigateUp)
-                    .with_key(KeyCode::A, KbgpNavCommand::NavigateLeft)
-                    .with_key(KeyCode::S, KbgpNavCommand::NavigateDown)
-                    .with_key(KeyCode::D, KbgpNavCommand::NavigateRight)
+                    .with_wasd_navigation()
                     // Special actions - keyboard:
                     .with_key(KeyCode::PageUp, KbgpNavCommand::user(MyActions::PrevMenu))
                     .with_key(KeyCode::PageDown, KbgpNavCommand::user(MyActions::NextMenu))

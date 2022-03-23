@@ -405,21 +405,12 @@ pub struct KbgpNavBindings {
 impl Default for KbgpNavBindings {
     /// Create bindings with the default mappings.
     ///
-    /// Navigation: arrow keys, d-pad, left stick.
-    /// Activateion: Enter (egui builtin), Spacebar (also egui builtin), gamepad south button.
+    /// * Navigation: arrow keys, d-pad, left stick.
+    /// * Activateion: Enter (egui builtin), Spacebar (also egui builtin), gamepad south button.
     fn default() -> Self {
         Self::empty()
-            // Keyboard binding. No need for Space and Enter - egui does them by default.
-            .with_key(KeyCode::Up, KbgpNavCommand::NavigateUp)
-            .with_key(KeyCode::Down, KbgpNavCommand::NavigateDown)
-            .with_key(KeyCode::Left, KbgpNavCommand::NavigateLeft)
-            .with_key(KeyCode::Right, KbgpNavCommand::NavigateRight)
-            // Gamepad bindings. Axis type bindings are not configurable here.
-            .with_gamepad_button(GamepadButtonType::DPadUp, KbgpNavCommand::NavigateUp)
-            .with_gamepad_button(GamepadButtonType::DPadDown, KbgpNavCommand::NavigateDown)
-            .with_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavCommand::NavigateLeft)
-            .with_gamepad_button(GamepadButtonType::DPadRight, KbgpNavCommand::NavigateRight)
-            .with_gamepad_button(GamepadButtonType::South, KbgpNavCommand::Click)
+            .with_arrow_keys_navigation()
+            .with_gamepad_dpad_navigation_and_south_button_activation()
     }
 }
 
@@ -447,6 +438,57 @@ impl KbgpNavBindings {
             gamepad_buttons: Default::default(),
             user_action_types: Default::default(),
         }
+    }
+
+    /// Bind the arrow keys for navigation.
+    ///
+    /// [`KbgpNavBindings::default`] already contains these mappings.
+    pub fn bind_arrow_keys_navigation(&mut self) {
+        self.bind_key(KeyCode::Up, KbgpNavCommand::NavigateUp);
+        self.bind_key(KeyCode::Down, KbgpNavCommand::NavigateDown);
+        self.bind_key(KeyCode::Left, KbgpNavCommand::NavigateLeft);
+        self.bind_key(KeyCode::Right, KbgpNavCommand::NavigateRight);
+    }
+
+    /// Bind the arrow keys for navigation.
+    ///
+    /// [`KbgpNavBindings::default`] already contains these mappings.
+    pub fn with_arrow_keys_navigation(mut self) -> Self {
+        self.bind_arrow_keys_navigation();
+        self
+    }
+
+    /// Bind the gamepad's d-pad for navigation and south button for activation.
+    ///
+    /// [`KbgpNavBindings::default`] already contains these mappings.
+    pub fn bind_gamepad_dpad_navigation_and_south_button_activation(&mut self) {
+        self.bind_gamepad_button(GamepadButtonType::DPadUp, KbgpNavCommand::NavigateUp);
+        self.bind_gamepad_button(GamepadButtonType::DPadDown, KbgpNavCommand::NavigateDown);
+        self.bind_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavCommand::NavigateLeft);
+        self.bind_gamepad_button(GamepadButtonType::DPadRight, KbgpNavCommand::NavigateRight);
+        self.bind_gamepad_button(GamepadButtonType::South, KbgpNavCommand::Click);
+    }
+
+    /// Bind the gamepad's d-pad for navigation and south button for activation.
+    ///
+    /// [`KbgpNavBindings::default`] already contains these mappings.
+    pub fn with_gamepad_dpad_navigation_and_south_button_activation(mut self) -> Self {
+        self.bind_gamepad_dpad_navigation_and_south_button_activation();
+        self
+    }
+
+    /// Bind WASD for navigation.
+    pub fn bind_wasd_navigation(&mut self) {
+        self.bind_key(KeyCode::W, KbgpNavCommand::NavigateUp);
+        self.bind_key(KeyCode::S, KbgpNavCommand::NavigateDown);
+        self.bind_key(KeyCode::A, KbgpNavCommand::NavigateLeft);
+        self.bind_key(KeyCode::D, KbgpNavCommand::NavigateRight);
+    }
+
+    /// Bind WASD for navigation.
+    pub fn with_wasd_navigation(mut self) -> Self {
+        self.bind_wasd_navigation();
+        self
     }
 
     /// Bind a command to a keyboard key.
