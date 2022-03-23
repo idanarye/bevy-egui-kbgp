@@ -32,26 +32,26 @@ fn main() {
             allow_gamepads: true,
             bindings: {
                 bevy_egui_kbgp::KbgpNavBindings::default()
-                    .with_key(KeyCode::W, KbgpNavAction::NavigateUp)
-                    .with_key(KeyCode::A, KbgpNavAction::NavigateLeft)
-                    .with_key(KeyCode::S, KbgpNavAction::NavigateDown)
-                    .with_key(KeyCode::D, KbgpNavAction::NavigateRight)
+                    .with_key(KeyCode::W, KbgpNavCommand::NavigateUp)
+                    .with_key(KeyCode::A, KbgpNavCommand::NavigateLeft)
+                    .with_key(KeyCode::S, KbgpNavCommand::NavigateDown)
+                    .with_key(KeyCode::D, KbgpNavCommand::NavigateRight)
                     // Special actions - keyboard:
-                    .with_key(KeyCode::PageUp, KbgpNavAction::user(MyActions::PrevMenu))
-                    .with_key(KeyCode::PageDown, KbgpNavAction::user(MyActions::NextMenu))
-                    .with_key(KeyCode::Delete, KbgpNavAction::user(MyActions::Delete))
+                    .with_key(KeyCode::PageUp, KbgpNavCommand::user(MyActions::PrevMenu))
+                    .with_key(KeyCode::PageDown, KbgpNavCommand::user(MyActions::NextMenu))
+                    .with_key(KeyCode::Delete, KbgpNavCommand::user(MyActions::Delete))
                     // Special actions - gamepad:
                     .with_gamepad_button(
                         GamepadButtonType::LeftTrigger,
-                        KbgpNavAction::user(MyActions::PrevMenu),
+                        KbgpNavCommand::user(MyActions::PrevMenu),
                     )
                     .with_gamepad_button(
                         GamepadButtonType::RightTrigger,
-                        KbgpNavAction::user(MyActions::NextMenu),
+                        KbgpNavCommand::user(MyActions::NextMenu),
                     )
                     .with_gamepad_button(
                         GamepadButtonType::North,
-                        KbgpNavAction::user(MyActions::Delete),
+                        KbgpNavCommand::user(MyActions::Delete),
                     )
             },
         })

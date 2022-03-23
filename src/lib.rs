@@ -73,7 +73,7 @@ use bevy_egui::EguiContext;
 
 use self::navigation::KbgpNavigationState;
 use self::navigation::KbgpPrepareNavigation;
-pub use self::navigation::{KbgpNavAction, KbgpNavActivation, KbgpNavBindings};
+pub use self::navigation::{KbgpNavCommand, KbgpNavActivation, KbgpNavBindings};
 use self::pending_input::KbgpPendingInputState;
 pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
@@ -86,7 +86,7 @@ pub mod prelude {
     pub use crate::KbgpEguiUiCtxExt;
     pub use crate::KbgpInput;
     pub use crate::KbgpInputSource;
-    pub use crate::KbgpNavAction;
+    pub use crate::KbgpNavCommand;
     pub use crate::KbgpNavActivation;
     pub use crate::KbgpNavBindings;
     pub use crate::KbgpPlugin;

@@ -42,24 +42,24 @@ pub struct KbgpPrepareNavigation {
 }
 
 impl KbgpPrepareNavigation {
-    pub fn apply_action(&mut self, action: &KbgpNavAction) {
-        match action {
-            KbgpNavAction::NavigateUp => {
+    pub fn apply_action(&mut self, command: &KbgpNavCommand) {
+        match command {
+            KbgpNavCommand::NavigateUp => {
                 self.input |= INPUT_MASK_UP;
             }
-            KbgpNavAction::NavigateDown => {
+            KbgpNavCommand::NavigateDown => {
                 self.input |= INPUT_MASK_DOWN;
             }
-            KbgpNavAction::NavigateLeft => {
+            KbgpNavCommand::NavigateLeft => {
                 self.input |= INPUT_MASK_LEFT;
             }
-            KbgpNavAction::NavigateRight => {
+            KbgpNavCommand::NavigateRight => {
                 self.input |= INPUT_MASK_RIGHT;
             }
-            KbgpNavAction::Click => {
+            KbgpNavCommand::Click => {
                 self.input |= INPUT_MASK_CLICK;
             }
-            KbgpNavAction::User(action) => {
+            KbgpNavCommand::User(action) => {
                 self.user_action = Some(action());
                 self.input |= INPUT_MASK_USER_ACTION;
             }
@@ -70,7 +70,7 @@ impl KbgpPrepareNavigation {
     pub fn navigate_keyboard_by_binding(
         &mut self,
         keys: &Input<KeyCode>,
-        binding: &HashMap<KeyCode, KbgpNavAction>,
+        binding: &HashMap<KeyCode, KbgpNavCommand>,
     ) {
         for key in keys.get_pressed() {
             if let Some(action) = binding.get(key) {
@@ -87,29 +87,29 @@ impl KbgpPrepareNavigation {
         gamepads: &Gamepads,
         axes: &Axis<GamepadAxis>,
         buttons: &Input<GamepadButton>,
-        binding: &HashMap<GamepadButtonType, KbgpNavAction>,
+        binding: &HashMap<GamepadButtonType, KbgpNavCommand>,
     ) {
         for gamepad in gamepads.iter() {
             for (axis_type, action_for_negative, action_for_positive) in [
                 (
                     GamepadAxisType::DPadX,
-                    KbgpNavAction::NavigateLeft,
-                    KbgpNavAction::NavigateRight,
+                    KbgpNavCommand::NavigateLeft,
+                    KbgpNavCommand::NavigateRight,
                 ),
                 (
                     GamepadAxisType::DPadY,
-                    KbgpNavAction::NavigateDown,
-                    KbgpNavAction::NavigateUp,
+                    KbgpNavCommand::NavigateDown,
+                    KbgpNavCommand::NavigateUp,
                 ),
                 (
                     GamepadAxisType::LeftStickX,
-                    KbgpNavAction::NavigateLeft,
-                    KbgpNavAction::NavigateRight,
+                    KbgpNavCommand::NavigateLeft,
+                    KbgpNavCommand::NavigateRight,
                 ),
                 (
                     GamepadAxisType::LeftStickY,
-                    KbgpNavAction::NavigateDown,
-                    KbgpNavAction::NavigateUp,
+                    KbgpNavCommand::NavigateDown,
+                    KbgpNavCommand::NavigateUp,
                 ),
             ] {
                 if let Some(axis_value) = axes.get(GamepadAxis(*gamepad, axis_type)) {
@@ -299,7 +299,7 @@ impl KbgpNavigationState {
     }
 }
 
-pub enum KbgpNavAction {
+pub enum KbgpNavCommand {
     /// Move the focus one widget up. If no widget has the focus - move up from the bottom.
     ///
     /// Will only work if [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation) was
@@ -329,15 +329,15 @@ pub enum KbgpNavAction {
     User(Box<dyn 'static + Send + Sync + Fn() -> Box<dyn Any + Send + Sync>>),
 }
 
-impl KbgpNavAction {
+impl KbgpNavCommand {
     pub fn user<T: 'static + Clone + Send + Sync>(value: T) -> Self {
         Self::User(Box::new(move || Box::new(value.clone())))
     }
 }
 
 pub struct KbgpNavBindings {
-    keyboard: HashMap<KeyCode, KbgpNavAction>,
-    gamepad_buttons: HashMap<GamepadButtonType, KbgpNavAction>,
+    keyboard: HashMap<KeyCode, KbgpNavCommand>,
+    gamepad_buttons: HashMap<GamepadButtonType, KbgpNavCommand>,
     user_action_types: HashSet<TypeId>,
 }
 
@@ -345,25 +345,25 @@ impl Default for KbgpNavBindings {
     fn default() -> Self {
         Self::empty()
             // Keyboard binding. No need for Space and Enter - egui does them by default.
-            .with_key(KeyCode::Up, KbgpNavAction::NavigateUp)
-            .with_key(KeyCode::Down, KbgpNavAction::NavigateDown)
-            .with_key(KeyCode::Left, KbgpNavAction::NavigateLeft)
-            .with_key(KeyCode::Right, KbgpNavAction::NavigateRight)
+            .with_key(KeyCode::Up, KbgpNavCommand::NavigateUp)
+            .with_key(KeyCode::Down, KbgpNavCommand::NavigateDown)
+            .with_key(KeyCode::Left, KbgpNavCommand::NavigateLeft)
+            .with_key(KeyCode::Right, KbgpNavCommand::NavigateRight)
             // Gamepad bindings. Axis type bindings are not configurable here.
-            .with_gamepad_button(GamepadButtonType::DPadUp, KbgpNavAction::NavigateUp)
-            .with_gamepad_button(GamepadButtonType::DPadDown, KbgpNavAction::NavigateDown)
-            .with_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavAction::NavigateLeft)
-            .with_gamepad_button(GamepadButtonType::DPadRight, KbgpNavAction::NavigateRight)
-            .with_gamepad_button(GamepadButtonType::South, KbgpNavAction::Click)
+            .with_gamepad_button(GamepadButtonType::DPadUp, KbgpNavCommand::NavigateUp)
+            .with_gamepad_button(GamepadButtonType::DPadDown, KbgpNavCommand::NavigateDown)
+            .with_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavCommand::NavigateLeft)
+            .with_gamepad_button(GamepadButtonType::DPadRight, KbgpNavCommand::NavigateRight)
+            .with_gamepad_button(GamepadButtonType::South, KbgpNavCommand::Click)
     }
 }
 
 impl KbgpNavBindings {
-    pub fn keyboard(&self) -> &HashMap<KeyCode, KbgpNavAction> {
+    pub fn keyboard(&self) -> &HashMap<KeyCode, KbgpNavCommand> {
         &self.keyboard
     }
 
-    pub fn gamepad_buttons(&self) -> &HashMap<GamepadButtonType, KbgpNavAction> {
+    pub fn gamepad_buttons(&self) -> &HashMap<GamepadButtonType, KbgpNavCommand> {
         &self.gamepad_buttons
     }
     pub fn empty() -> Self {
@@ -374,35 +374,35 @@ impl KbgpNavBindings {
         }
     }
 
-    pub fn bind_key(&mut self, key: KeyCode, action: KbgpNavAction) {
-        if let KbgpNavAction::User(ref user_action) = action {
+    pub fn bind_key(&mut self, key: KeyCode, command: KbgpNavCommand) {
+        if let KbgpNavCommand::User(ref user_action) = command {
             self.user_action_types.insert(user_action().type_id());
         }
-        self.keyboard.insert(key, action);
+        self.keyboard.insert(key, command);
     }
 
-    pub fn with_key(mut self, key: KeyCode, action: KbgpNavAction) -> Self {
-        self.bind_key(key, action);
+    pub fn with_key(mut self, key: KeyCode, command: KbgpNavCommand) -> Self {
+        self.bind_key(key, command);
         self
     }
 
     pub fn bind_gamepad_button(
         &mut self,
         gamepad_button: GamepadButtonType,
-        action: KbgpNavAction,
+        command: KbgpNavCommand,
     ) {
-        if let KbgpNavAction::User(ref user_action) = action {
+        if let KbgpNavCommand::User(ref user_action) = command {
             self.user_action_types.insert(user_action().type_id());
         }
-        self.gamepad_buttons.insert(gamepad_button, action);
+        self.gamepad_buttons.insert(gamepad_button, command);
     }
 
     pub fn with_gamepad_button(
         mut self,
         gamepad_button: GamepadButtonType,
-        action: KbgpNavAction,
+        command: KbgpNavCommand,
     ) -> Self {
-        self.bind_gamepad_button(gamepad_button, action);
+        self.bind_gamepad_button(gamepad_button, command);
         self
     }
 }
