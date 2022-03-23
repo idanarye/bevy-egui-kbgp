@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 ### Added
 - Ability to set navigation binding.
+- User actions.
 
 ### Changed
 - Replace individual navigation navigation methods with a single method + enum.

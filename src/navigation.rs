@@ -1,6 +1,8 @@
+use std::any::{TypeId, Any};
+
 use crate::egui;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 
 use crate::KbgpCommon;
 
@@ -12,12 +14,14 @@ const INPUT_MASK_RIGHT: u8 = 8;
 const INPUT_MASK_HORIZONTAL: u8 = INPUT_MASK_LEFT | INPUT_MASK_RIGHT;
 
 const INPUT_MASK_CLICK: u8 = 16;
+const INPUT_MASK_USER_ACTION: u8 = 32;
 
 #[derive(Default)]
 pub(crate) struct KbgpNavigationState {
     pub(crate) move_focus: Option<egui::Id>,
     prev_input: u8,
     next_navigation: f64,
+    pub(crate) user_action: Option<Box<dyn Any + Send + Sync>>,
 }
 
 /// An option of [`KbgpPrepare`](crate::KbgpPrepare).
@@ -33,21 +37,33 @@ pub struct KbgpPrepareNavigation {
     ///
     /// Default: 0.04 seconds.
     pub secs_between_inputs: f64,
-    pub(crate) input: u8,
+    input: u8,
+    user_action: Option<Box<dyn Any + Send + Sync>>,
 }
 
 impl KbgpPrepareNavigation {
-    pub fn apply_action(&mut self, action: KbgpNavAction) {
-        self.input |= match action {
-            KbgpNavAction::NavigateUp => INPUT_MASK_UP,
-            KbgpNavAction::NavigateDown => INPUT_MASK_DOWN,
-            KbgpNavAction::NavigateLeft => INPUT_MASK_LEFT,
-            KbgpNavAction::NavigateRight => INPUT_MASK_RIGHT,
-            KbgpNavAction::Activate(egui::PointerButton::Primary) => INPUT_MASK_CLICK,
-            KbgpNavAction::Activate(egui::PointerButton::Secondary) => todo!(),
-            KbgpNavAction::Activate(egui::PointerButton::Middle) => todo!(),
-            KbgpNavAction::Cancel => todo!(),
-        };
+    pub fn apply_action(&mut self, action: &KbgpNavAction) {
+        match action {
+            KbgpNavAction::NavigateUp => {
+                self.input |= INPUT_MASK_UP;
+            }
+            KbgpNavAction::NavigateDown => {
+                self.input |= INPUT_MASK_DOWN;
+            }
+            KbgpNavAction::NavigateLeft => {
+                self.input |= INPUT_MASK_LEFT;
+            }
+            KbgpNavAction::NavigateRight => {
+                self.input |= INPUT_MASK_RIGHT;
+            }
+            KbgpNavAction::Click => {
+                self.input |= INPUT_MASK_CLICK;
+            }
+            KbgpNavAction::User(action) => {
+                self.user_action = Some(action());
+                self.input |= INPUT_MASK_USER_ACTION;
+            }
+        }
     }
 
     /// Navigate the UI with the keyboard.
@@ -58,7 +74,7 @@ impl KbgpPrepareNavigation {
     ) {
         for key in keys.get_pressed() {
             if let Some(action) = binding.get(key) {
-                self.apply_action(*action);
+                self.apply_action(action);
             }
         }
     }
@@ -98,16 +114,16 @@ impl KbgpPrepareNavigation {
             ] {
                 if let Some(axis_value) = axes.get(GamepadAxis(*gamepad, axis_type)) {
                     if axis_value < -0.5 {
-                        self.apply_action(action_for_negative)
+                        self.apply_action(&action_for_negative)
                     } else if 0.5 < axis_value {
-                        self.apply_action(action_for_positive)
+                        self.apply_action(&action_for_positive)
                     }
                 }
             }
         }
         for GamepadButton(_, button_type) in buttons.get_pressed() {
             if let Some(action) = binding.get(button_type) {
-                self.apply_action(*action);
+                self.apply_action(action);
             }
         }
     }
@@ -126,9 +142,11 @@ impl KbgpNavigationState {
             secs_after_first_input: 0.6,
             secs_between_inputs: 0.04,
             input: 0,
+            user_action: None,
         };
 
         prepare_dlg(&mut handle);
+        self.user_action = None;
         if handle.input != 0 {
             let mut effective_input = handle.input;
             let current_time = egui_ctx.input().time;
@@ -147,6 +165,10 @@ impl KbgpNavigationState {
                     pressed: true,
                     modifiers: Default::default(),
                 });
+            }
+
+            if effective_input & INPUT_MASK_USER_ACTION != 0 {
+                self.user_action = handle.user_action;
             }
 
             match effective_input & INPUT_MASK_VERTICAL {
@@ -277,7 +299,6 @@ impl KbgpNavigationState {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KbgpNavAction {
     /// Move the focus one widget up. If no widget has the focus - move up from the bottom.
     ///
@@ -304,13 +325,20 @@ pub enum KbgpNavAction {
     /// `kbgp_navigation` was called on.
     NavigateRight,
     /// Make egui think the player clicked on the focused widget.
-    Activate(egui::PointerButton),
-    Cancel,
+    Click,
+    User(Box<dyn 'static + Send + Sync + Fn() -> Box<dyn Any + Send + Sync>>),
+}
+
+impl KbgpNavAction {
+    pub fn user<T: 'static + Clone + Send + Sync>(value: T) -> Self {
+        Self::User(Box::new(move || Box::new(value.clone())))
+    }
 }
 
 pub struct KbgpNavBindings {
-    pub keyboard: HashMap<KeyCode, KbgpNavAction>,
-    pub gamepad_buttons: HashMap<GamepadButtonType, KbgpNavAction>,
+    keyboard: HashMap<KeyCode, KbgpNavAction>,
+    gamepad_buttons: HashMap<GamepadButtonType, KbgpNavAction>,
+    user_action_types: HashSet::<TypeId>,
 }
 
 impl Default for KbgpNavBindings {
@@ -321,7 +349,6 @@ impl Default for KbgpNavBindings {
             .with_key(KeyCode::Down, KbgpNavAction::NavigateDown)
             .with_key(KeyCode::Left, KbgpNavAction::NavigateLeft)
             .with_key(KeyCode::Right, KbgpNavAction::NavigateRight)
-            // .with_key(KeyCode::Escape, KbgpNavAction::Cancel)
             // Gamepad bindings. Axis type bindings are not configurable here.
             .with_gamepad_button(GamepadButtonType::DPadUp, KbgpNavAction::NavigateUp)
             .with_gamepad_button(GamepadButtonType::DPadDown, KbgpNavAction::NavigateDown)
@@ -329,21 +356,31 @@ impl Default for KbgpNavBindings {
             .with_gamepad_button(GamepadButtonType::DPadRight, KbgpNavAction::NavigateRight)
             .with_gamepad_button(
                 GamepadButtonType::South,
-                KbgpNavAction::Activate(egui::PointerButton::Primary),
+                KbgpNavAction::Click,
             )
-            .with_gamepad_button(GamepadButtonType::East, KbgpNavAction::Cancel)
     }
 }
 
 impl KbgpNavBindings {
+    pub fn keyboard(&self) -> &HashMap<KeyCode, KbgpNavAction> {
+        &self.keyboard
+    }
+
+    pub fn gamepad_buttons(&self) -> &HashMap<GamepadButtonType, KbgpNavAction> {
+        &self.gamepad_buttons
+    }
     pub fn empty() -> Self {
         Self {
             keyboard: Default::default(),
             gamepad_buttons: Default::default(),
+            user_action_types: Default::default(),
         }
     }
 
     pub fn bind_key(&mut self, key: KeyCode, action: KbgpNavAction) {
+        if let KbgpNavAction::User(ref user_action) = action {
+            self.user_action_types.insert(user_action().type_id());
+        }
         self.keyboard.insert(key, action);
     }
 
@@ -357,6 +394,9 @@ impl KbgpNavBindings {
         gamepad_button: GamepadButtonType,
         action: KbgpNavAction,
     ) {
+        if let KbgpNavAction::User(ref user_action) = action {
+            self.user_action_types.insert(user_action().type_id());
+        }
         self.gamepad_buttons.insert(gamepad_button, action);
     }
 
@@ -368,4 +408,12 @@ impl KbgpNavBindings {
         self.bind_gamepad_button(gamepad_button, action);
         self
     }
+}
+
+pub enum KbgpNavActivation<T> {
+    None,
+    Clicked,
+    ClickedSecondary,
+    ClickedMiddle,
+    User(T),
 }

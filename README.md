@@ -19,6 +19,7 @@ Try it out in https://idanarye.github.io/bevy-egui-kbgp/demos/example
 
 * Navigate the GUI using arrow keys and gamepads.
 * Activate buttons from gamepads (egui already supports activation from keyboard with Space/Enter)
+* User defined actions for the entire UI or for individual widgets.
 * Customize all these controls.
 * Key assignment.
 
@@ -26,7 +27,6 @@ Try it out in https://idanarye.github.io/bevy-egui-kbgp/demos/example
 
 * Support for comboboxes.
 * Figure out how to support navigating out of textboxes.
-* More navigation keys (back key, configurable keys...)
 
 ## Versions
 

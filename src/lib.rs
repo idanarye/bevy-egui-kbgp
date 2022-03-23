@@ -73,7 +73,7 @@ use bevy_egui::EguiContext;
 
 use self::navigation::KbgpNavigationState;
 use self::navigation::KbgpPrepareNavigation;
-pub use self::navigation::{KbgpNavAction, KbgpNavBindings};
+pub use self::navigation::{KbgpNavAction, KbgpNavBindings, KbgpNavActivation};
 use self::pending_input::KbgpPendingInputState;
 pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
@@ -87,6 +87,7 @@ pub mod prelude {
     pub use crate::KbgpInput;
     pub use crate::KbgpInputSource;
     pub use crate::KbgpNavAction;
+    pub use crate::KbgpNavActivation;
     pub use crate::KbgpNavBindings;
     pub use crate::KbgpPlugin;
     pub use crate::KbgpSettings;
@@ -189,8 +190,8 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///     kbgp_prepare(egui_context.ctx_mut(), |prp| {
 ///         match prp {
 ///             KbgpPrepare::Navigation(prp) => {
-///                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);
-///                 prp.navigate_gamepad_by_binding(&gamepads, &gamepad_axes, &gamepad_buttons, &settings.bindings.gamepad_buttons);
+///                 prp.navigate_keyboard_by_binding(&keys, settings.bindings.keyboard());
+///                 prp.navigate_gamepad_by_binding(&gamepads, &gamepad_axes, &gamepad_buttons, settings.bindings.gamepad_buttons());
 ///             }
 ///             KbgpPrepare::PendingInput(prp) => {
 ///                 prp.accept_keyboard_input(&keys);
@@ -259,14 +260,14 @@ fn kbgp_system_default_input(
     kbgp_prepare(egui_context.ctx_mut(), |prp| match prp {
         KbgpPrepare::Navigation(prp) => {
             if settings.allow_keyboard {
-                prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);
+                prp.navigate_keyboard_by_binding(&keys, settings.bindings.keyboard());
             }
             if settings.allow_gamepads {
                 prp.navigate_gamepad_by_binding(
                     &gamepads,
                     &gamepad_axes,
                     &gamepad_buttons,
-                    &settings.bindings.gamepad_buttons,
+                    settings.bindings.gamepad_buttons(),
                 );
             }
         }
@@ -338,6 +339,9 @@ pub trait KbgpEguiResponseExt {
 
     /// Navigate to and from this widget.
     fn kbgp_navigation(self) -> Self;
+
+    fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T>;
+    fn kbgp_activated<T: 'static + Clone>(&self) -> KbgpNavActivation<T>;
 
     /// Accept a single key/button input from this widget.
     ///
@@ -497,6 +501,28 @@ impl KbgpEguiResponseExt for egui::Response {
             KbgpState::PendingInput(_) => {}
         }
         self
+    }
+
+    fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T> {
+        if self.has_focus() {
+            self.ctx.kbgp_user_action()
+        } else {
+            None
+        }
+    }
+
+    fn kbgp_activated<T: 'static + Clone>(&self) -> KbgpNavActivation<T> {
+        if self.clicked() {
+            KbgpNavActivation::Clicked
+        } else if self.secondary_clicked() {
+            KbgpNavActivation::ClickedSecondary
+        } else if self.middle_clicked() {
+            KbgpNavActivation::ClickedMiddle
+        } else if let Some(action) = self.kbgp_user_action() {
+            KbgpNavActivation::User(action)
+        } else {
+            KbgpNavActivation::None
+        }
     }
 
     fn kbgp_pending_input_manual<T>(
@@ -707,16 +733,32 @@ pub trait KbgpEguiUiCtxExt {
     /// Otherwise, the same player input that triggered the transition will be applied again to the
     /// GUI in the new state.
     fn kbgp_clear_input(&self);
+
+    fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T>;
 }
 
 impl KbgpEguiUiCtxExt for egui::Ui {
     fn kbgp_clear_input(&self) {
         self.ctx().kbgp_clear_input()
     }
+
+    fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T> {
+        self.ctx().kbgp_user_action()
+    }
 }
 
 impl KbgpEguiUiCtxExt for egui::Context {
     fn kbgp_clear_input(&self) {
+        let kbgp = kbgp_get(self);
+        let mut kbgp = kbgp.lock();
+        match &mut kbgp.state {
+            KbgpState::Inactive => {}
+            KbgpState::PendingInput(_) => {}
+            KbgpState::Navigation(state) => {
+                state.user_action = None;
+            }
+        }
+
         let mut input = self.input_mut();
         input.pointer = Default::default();
         input.events.retain(|event| match event {
@@ -733,5 +775,17 @@ impl KbgpEguiUiCtxExt for egui::Context {
             } => false,
             _ => true,
         });
+    }
+
+    fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T> {
+        let kbgp = kbgp_get(self);
+        let kbgp = kbgp.lock();
+        match &kbgp.state {
+            KbgpState::Inactive => None,
+            KbgpState::PendingInput(_) => None,
+            KbgpState::Navigation(state) => {
+                state.user_action.as_ref()?.downcast_ref().cloned()
+            }
+        }
     }
 }

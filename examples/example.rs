@@ -11,12 +11,19 @@ enum MenuState {
     Empty2,
 }
 
+#[derive(Clone, PartialEq, Eq)]
+enum MyActions {
+    PrevMenu,
+    NextMenu,
+    Delete,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(EguiPlugin)
         .add_plugin(KbgpPlugin)
-        .insert_resource(EguiSettings { scale_factor: 2.0 })
+        .insert_resource(EguiSettings { scale_factor: 1.5 })
         .insert_resource(KbgpSettings {
             allow_keyboard: true,
             allow_mouse_buttons: true,
@@ -29,6 +36,14 @@ fn main() {
                     .with_key(KeyCode::A, KbgpNavAction::NavigateLeft)
                     .with_key(KeyCode::S, KbgpNavAction::NavigateDown)
                     .with_key(KeyCode::D, KbgpNavAction::NavigateRight)
+                    // Special actions - keyboard:
+                    .with_key(KeyCode::PageUp, KbgpNavAction::user(MyActions::PrevMenu))
+                    .with_key(KeyCode::PageDown, KbgpNavAction::user(MyActions::NextMenu))
+                    .with_key(KeyCode::Delete, KbgpNavAction::user(MyActions::Delete))
+                    // Special actions - gamepad:
+                    .with_gamepad_button(GamepadButtonType::LeftTrigger, KbgpNavAction::user(MyActions::PrevMenu))
+                    .with_gamepad_button(GamepadButtonType::RightTrigger, KbgpNavAction::user(MyActions::NextMenu))
+                    .with_gamepad_button(GamepadButtonType::North, KbgpNavAction::user(MyActions::Delete))
             },
         })
         .add_state(MenuState::Main)
@@ -39,6 +54,10 @@ fn main() {
 }
 
 fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
+    ui.label("Navigation: arrow keys, WASD, gamepad's d-pad, gamepad's left stick.");
+    ui.label("Primary action: left-click, Enter, Space, gamepad's south button.");
+    ui.label("Secondary action: right-click, Delete key, gamepad's north button.");
+    ui.label("Change menu: page up/down, gamepad's upper triggers, these buttons here:");
     ui.horizontal(|ui| {
         let prev_state = match state.current() {
             MenuState::Main => MenuState::Empty2,
@@ -55,6 +74,8 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             .button(format!("<<{:?}<<", prev_state))
             .kbgp_navigation()
             .clicked()
+            ||
+            ui.kbgp_user_action() == Some(MyActions::PrevMenu)
         {
             state.set(prev_state).unwrap();
             ui.kbgp_clear_input();
@@ -67,6 +88,8 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             .kbgp_navigation()
             .kbgp_initial_focus()
             .clicked()
+            ||
+            ui.kbgp_user_action() == Some(MyActions::NextMenu)
         {
             state.set(next_state).unwrap();
             ui.ctx().kbgp_clear_input();
@@ -114,12 +137,20 @@ fn ui_system(
         menu_controls(ui, &mut state);
         ui.horizontal(|ui| {
             for counter in button_counters.iter_mut() {
-                if ui
+                match ui
                     .button(format!("Counter: {counter}"))
                     .kbgp_navigation()
-                    .clicked()
+                    .kbgp_activated()
                 {
-                    *counter += 1;
+                    KbgpNavActivation::Clicked => {
+                        *counter += 1;
+                    }
+                    KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete) => {
+                        if 0 < *counter {
+                            *counter -= 1;
+                        }
+                    }
+                    _ => {}
                 }
             }
         });
@@ -141,6 +172,11 @@ fn ui_system(
                 }
             }
         });
+
+        fn check_for_delete_action(button: &egui::Response) -> bool {
+            matches!(button.kbgp_activated(), KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete))
+        }
+
         ui.horizontal(|ui| {
             ui.label("Set key:");
             for settable_input in settable_inputs.iter_mut() {
@@ -149,8 +185,11 @@ fn ui_system(
                 } else {
                     "N/A".to_owned()
                 };
-                if let Some(input) = ui.button(text).kbgp_navigation().kbgp_pending_input() {
+                let button = ui.button(text).kbgp_navigation();
+                if let Some(input) = button.kbgp_pending_input() {
                     *settable_input = Some(input);
+                } else if check_for_delete_action(&button) {
+                    *settable_input = None;
                 }
             }
         });
@@ -162,8 +201,11 @@ fn ui_system(
                 } else {
                     KbgpInput::format_chord(settable_chord.iter().cloned())
                 };
-                if let Some(chord) = ui.button(text).kbgp_navigation().kbgp_pending_chord() {
+                let button = ui.button(text).kbgp_navigation();
+                if let Some(chord) = button.kbgp_pending_chord() {
                     *settable_chord = chord;
+                } else if check_for_delete_action(&button) {
+                    *settable_chord = Default::default();
                 }
             }
         });
@@ -175,12 +217,11 @@ fn ui_system(
                 } else {
                     KbgpInput::format_chord(settable_chord.iter().cloned())
                 };
-                if let Some(chord) = ui
-                    .button(text)
-                    .kbgp_navigation()
-                    .kbgp_pending_chord_same_source()
-                {
+                let button = ui.button(text).kbgp_navigation();
+                if let Some(chord) = button.kbgp_pending_chord_same_source() {
                     *settable_chord = chord;
+                } else if check_for_delete_action(&button) {
+                    *settable_chord = Default::default();
                 }
             }
         });
@@ -193,12 +234,11 @@ fn ui_system(
                     } else {
                         "N/A".to_owned()
                     };
-                    if let Some(input) = ui
-                        .button(text)
-                        .kbgp_navigation()
-                        .kbgp_pending_input_of_source(*source)
-                    {
+                    let button = ui.button(text).kbgp_navigation();
+                    if let Some(input) = button.kbgp_pending_input_of_source(*source) {
                         *settable_input = Some(input);
+                    } else if check_for_delete_action(&button) {
+                        *settable_input = None;
                     }
                 }
             });
@@ -212,12 +252,11 @@ fn ui_system(
                     } else {
                         KbgpInput::format_chord(settable_chord.iter().cloned())
                     };
-                    if let Some(chord) = ui
-                        .button(text)
-                        .kbgp_navigation()
-                        .kbgp_pending_chord_of_source(*source)
-                    {
+                    let button = ui.button(text).kbgp_navigation();
+                    if let Some(chord) = button.kbgp_pending_chord_of_source(*source) {
                         *settable_chord = chord;
+                    } else if check_for_delete_action(&button) {
+                        *settable_chord = Default::default();
                     }
                 }
             });
