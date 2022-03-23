@@ -6,6 +6,7 @@
 //!   functionality.
 //! * Call [`ui.kbgp_clear_input`](crate::KbgpEguiUiCtxExt::kbgp_clear_input) when triggering a
 //!   state transition as a response to a click on an egui widget.
+//! * To set special actions, see [the example here](crate::KbgpNavCommand::user).
 //!
 //! ```no_run
 //! use bevy_egui_kbgp::{egui, bevy_egui};
@@ -55,7 +56,7 @@
 //! returned as a [`KbgpInput`].
 //!
 //! [`kbgp_pending_chord`](crate::KbgpEguiResponseExt::kbgp_pending_chord) is similar, but prompts
-//! the user to enter multiple keys instead of just one.
+//! the player to enter multiple keys instead of just one.
 //!
 //! Both functions have several variants that allow limiting the chords/keys accepted by that
 //! button.
@@ -122,7 +123,7 @@ pub struct KbgpSettings {
     pub allow_mouse_wheel_sideways: bool,
     /// Whether or not gamepads input is accepted for navigation and for chords.
     pub allow_gamepads: bool,
-
+    /// Input mapping for navigation.
     pub bindings: KbgpNavBindings,
 }
 
@@ -340,7 +341,38 @@ pub trait KbgpEguiResponseExt {
     /// Navigate to and from this widget.
     fn kbgp_navigation(self) -> Self;
 
+    /// Check if the player pressed a user action button while focused on this widget.
+    ///
+    /// ```no_run
+    /// # use bevy_egui_kbgp::egui;
+    /// # use bevy_egui_kbgp::prelude::*;
+    /// # let ui: egui::Ui = todo!();
+    /// # #[derive(Clone)]
+    /// # enum MyUserAction { Action1, Action2 }
+    /// match ui.button("Button").kbgp_user_action() {
+    ///     None => {}
+    ///     Some(MyUserAction::Action1) => println!("User action 1"),
+    ///     Some(MyUserAction::Action2) => println!("User action 2"),
+    /// }
+    /// ```
     fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T>;
+
+    /// Check if the player activated this widget or pressed a user action button while focused on
+    /// it.
+    ///
+    /// ```no_run
+    /// # use bevy_egui_kbgp::egui;
+    /// # use bevy_egui_kbgp::prelude::*;
+    /// # let ui: egui::Ui = todo!();
+    /// # #[derive(Clone)]
+    /// # enum SpecialAction { Special1, Special2 }
+    /// match ui.button("Button").kbgp_activated() {
+    ///     KbgpNavActivation::Clicked => println!("Regular activateion"),
+    ///     KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(SpecialAction::Special1) => println!("Special activateion 1"),
+    ///     KbgpNavActivation::ClickedMiddle | KbgpNavActivation::User(SpecialAction::Special2) => println!("Special activateion 2"),
+    ///     _ => {}
+    /// }
+    /// ```
     fn kbgp_activated<T: 'static + Clone>(&self) -> KbgpNavActivation<T>;
 
     /// Accept a single key/button input from this widget.
@@ -734,6 +766,24 @@ pub trait KbgpEguiUiCtxExt {
     /// GUI in the new state.
     fn kbgp_clear_input(&self);
 
+    /// Check if the player pressed a user action button.
+    ///
+    /// Note that if the focus is on a widget that handles a user action, it will be reported both
+    /// by that widget's [`kbgp_user_action`](crate::KbgpEguiResponseExt::kbgp_user_action) or
+    /// [`kbgp_activated`](crate::KbgpEguiResponseExt::kbgp_activated) and by this method.
+    ///
+    /// ```no_run
+    /// # use bevy_egui_kbgp::egui;
+    /// # use bevy_egui_kbgp::prelude::*;
+    /// # let ui: egui::Ui = todo!();
+    /// # #[derive(Clone)]
+    /// # enum MyUserAction { Action1, Action2 }
+    /// match ui.kbgp_user_action() {
+    ///     None => {}
+    ///     Some(MyUserAction::Action1) => println!("User action 1"),
+    ///     Some(MyUserAction::Action2) => println!("User action 2"),
+    /// }
+    /// ```
     fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T>;
 }
 

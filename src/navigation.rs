@@ -326,15 +326,76 @@ pub enum KbgpNavCommand {
     NavigateRight,
     /// Make egui think the player clicked on the focused widget.
     Click,
+    /// Activeate a user defined command.
+    ///
+    /// This variant is tricky to construct directly - use [`KbgpNavCommand::user`] instead.
+    ///
+    /// User commands can be checked by using
+    /// [`kbgp_user_action`](crate::KbgpEguiResponseExt::kbgp_user_action) or
+    /// [`kbgp_activated`](crate::KbgpEguiResponseExt::kbgp_activated) on the widget and
+    /// [`kbgp_user_action`](crate::KbgpEguiUiCtxExt::kbgp_user_action) on the UI handle.
     User(Box<dyn 'static + Send + Sync + Fn() -> Box<dyn Any + Send + Sync>>),
 }
 
 impl KbgpNavCommand {
+    /// Used to define user-commands.
+    ///
+    /// ```no_run
+    /// use bevy::prelude::*;
+    /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui_kbgp::{egui, bevy_egui};
+    /// use bevy_egui_kbgp::prelude::*;
+    /// fn main() {
+    ///     App::new()
+    ///         .add_plugins(DefaultPlugins)
+    ///         .add_plugin(EguiPlugin)
+    ///         .add_plugin(KbgpPlugin)
+    ///         .add_system(ui_system)
+    ///         .insert_resource(KbgpSettings {
+    ///             bindings: bevy_egui_kbgp::KbgpNavBindings::default()
+    ///                 .with_key(KeyCode::Escape, KbgpNavCommand::user(UserAction::Exit))
+    ///                 .with_key(KeyCode::Z, KbgpNavCommand::user(UserAction::Special1))
+    ///                 .with_key(KeyCode::X, KbgpNavCommand::user(UserAction::Special2)),
+    ///             ..Default::default()
+    ///         })
+    ///         .run();
+    /// }
+    ///
+    /// #[derive(Clone)]
+    /// enum UserAction {
+    ///     Exit,
+    ///     Special1,
+    ///     Special2,
+    /// }
+    ///
+    /// fn ui_system(
+    ///     mut egui_context: ResMut<EguiContext>,
+    /// ) {
+    ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+    ///         if matches!(ui.kbgp_user_action(), Some(UserAction::Exit)) {
+    ///             println!("User wants to exit");
+    ///         }
+    ///         match ui.button("Button").kbgp_activated() {
+    ///             KbgpNavActivation::Clicked => {
+    ///                 println!("Regular button activation");
+    ///             }
+    ///             KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(UserAction::Special1) => {
+    ///                 println!("Special button activation 1");
+    ///             }
+    ///             KbgpNavActivation::ClickedMiddle | KbgpNavActivation::User(UserAction::Special2) => {
+    ///                 println!("Special button activation 2");
+    ///             }
+    ///             _ => {}
+    ///         }
+    ///     });
+    /// }
+    /// ```
     pub fn user<T: 'static + Clone + Send + Sync>(value: T) -> Self {
         Self::User(Box::new(move || Box::new(value.clone())))
     }
 }
 
+/// Input mapping for navigation.
 pub struct KbgpNavBindings {
     keyboard: HashMap<KeyCode, KbgpNavCommand>,
     gamepad_buttons: HashMap<GamepadButtonType, KbgpNavCommand>,
@@ -342,6 +403,10 @@ pub struct KbgpNavBindings {
 }
 
 impl Default for KbgpNavBindings {
+    /// Create bindings with the default mappings.
+    ///
+    /// Navigation: arrow keys, d-pad, left stick.
+    /// Activateion: Enter (egui builtin), Spacebar (also egui builtin), gamepad south button.
     fn default() -> Self {
         Self::empty()
             // Keyboard binding. No need for Space and Enter - egui does them by default.
@@ -359,13 +424,23 @@ impl Default for KbgpNavBindings {
 }
 
 impl KbgpNavBindings {
+    /// The configured keyboard bindings.
     pub fn keyboard(&self) -> &HashMap<KeyCode, KbgpNavCommand> {
         &self.keyboard
     }
 
+    /// The configured gamepad bindings.
+    ///
+    /// These are not limited to a specific gamepad, and are for buttons only - the axis behavior
+    /// is hard coded. Note that in some environments the d-pad is treated as an axis.
     pub fn gamepad_buttons(&self) -> &HashMap<GamepadButtonType, KbgpNavCommand> {
         &self.gamepad_buttons
     }
+
+    /// Create empty bindings with no mapping.
+    ///
+    /// Gamepad axes will still be mapped, because their handling is hard coded. Note that in some
+    /// environments the d-pad is treated as an axis.
     pub fn empty() -> Self {
         Self {
             keyboard: Default::default(),
@@ -374,6 +449,7 @@ impl KbgpNavBindings {
         }
     }
 
+    /// Bind a command to a keyboard key.
     pub fn bind_key(&mut self, key: KeyCode, command: KbgpNavCommand) {
         if let KbgpNavCommand::User(ref user_action) = command {
             self.user_action_types.insert(user_action().type_id());
@@ -381,11 +457,13 @@ impl KbgpNavBindings {
         self.keyboard.insert(key, command);
     }
 
+    /// Bind a command to a keyboard key.
     pub fn with_key(mut self, key: KeyCode, command: KbgpNavCommand) -> Self {
         self.bind_key(key, command);
         self
     }
 
+    /// Bind a command to a gamepad button.
     pub fn bind_gamepad_button(
         &mut self,
         gamepad_button: GamepadButtonType,
@@ -397,6 +475,7 @@ impl KbgpNavBindings {
         self.gamepad_buttons.insert(gamepad_button, command);
     }
 
+    /// Bind a command to a gamepad button.
     pub fn with_gamepad_button(
         mut self,
         gamepad_button: GamepadButtonType,
@@ -408,9 +487,18 @@ impl KbgpNavBindings {
 }
 
 pub enum KbgpNavActivation<T> {
+    /// The widget was not actiated this frame.
     None,
+    /// The widget's primary function was activated.
+    ///
+    /// This means it was either left-clicked, or it was focused and the player pressed on Enter,
+    /// Spacebar, the gamepad's south button (unless overriden), or some other key or button set in
+    /// [`KbgpNavBindings`].
     Clicked,
+    /// The widget was right-clicked.
     ClickedSecondary,
+    /// The widget was middle-clicked.
     ClickedMiddle,
+    /// A user action was activated when the focus was on this widget.
     User(T),
 }
