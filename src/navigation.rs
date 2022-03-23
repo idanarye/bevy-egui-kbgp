@@ -1,8 +1,8 @@
-use std::any::{Any, TypeId};
+use std::any::Any;
 
 use crate::egui;
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
+use bevy::utils::HashMap;
 
 use crate::KbgpCommon;
 
@@ -397,9 +397,13 @@ impl KbgpNavCommand {
 
 /// Input mapping for navigation.
 pub struct KbgpNavBindings {
-    keyboard: HashMap<KeyCode, KbgpNavCommand>,
-    gamepad_buttons: HashMap<GamepadButtonType, KbgpNavCommand>,
-    user_action_types: HashSet<TypeId>,
+    /// The configured keyboard bindings.
+    pub keyboard: HashMap<KeyCode, KbgpNavCommand>,
+    /// The configured gamepad bindings.
+    ///
+    /// These are not limited to a specific gamepad, and are for buttons only - the axis behavior
+    /// is hard coded. Note that in some environments the d-pad is treated as an axis.
+    pub gamepad_buttons: HashMap<GamepadButtonType, KbgpNavCommand>,
 }
 
 impl Default for KbgpNavBindings {
@@ -415,19 +419,6 @@ impl Default for KbgpNavBindings {
 }
 
 impl KbgpNavBindings {
-    /// The configured keyboard bindings.
-    pub fn keyboard(&self) -> &HashMap<KeyCode, KbgpNavCommand> {
-        &self.keyboard
-    }
-
-    /// The configured gamepad bindings.
-    ///
-    /// These are not limited to a specific gamepad, and are for buttons only - the axis behavior
-    /// is hard coded. Note that in some environments the d-pad is treated as an axis.
-    pub fn gamepad_buttons(&self) -> &HashMap<GamepadButtonType, KbgpNavCommand> {
-        &self.gamepad_buttons
-    }
-
     /// Create empty bindings with no mapping.
     ///
     /// Gamepad axes will still be mapped, because their handling is hard coded. Note that in some
@@ -436,7 +427,6 @@ impl KbgpNavBindings {
         Self {
             keyboard: Default::default(),
             gamepad_buttons: Default::default(),
-            user_action_types: Default::default(),
         }
     }
 
@@ -493,9 +483,6 @@ impl KbgpNavBindings {
 
     /// Bind a command to a keyboard key.
     pub fn bind_key(&mut self, key: KeyCode, command: KbgpNavCommand) {
-        if let KbgpNavCommand::User(ref user_action) = command {
-            self.user_action_types.insert(user_action().type_id());
-        }
         self.keyboard.insert(key, command);
     }
 
@@ -511,9 +498,6 @@ impl KbgpNavBindings {
         gamepad_button: GamepadButtonType,
         command: KbgpNavCommand,
     ) {
-        if let KbgpNavCommand::User(ref user_action) = command {
-            self.user_action_types.insert(user_action().type_id());
-        }
         self.gamepad_buttons.insert(gamepad_button, command);
     }
 
