@@ -215,9 +215,13 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
     }
     let Kbgp { common, state } = &mut *kbgp;
     match state {
-        KbgpState::Inactive => {
+        KbgpState::Inactive(state) => {
+            let KbgpInactiveState { focus_on } = *state;
             if !kbgp.common.nodes.is_empty() {
                 kbgp.state = KbgpState::Navigation(KbgpNavigationState::default());
+                if let Some(focus_on) = focus_on {
+                    egui_ctx.memory().request_focus(focus_on);
+                }
             }
         }
         KbgpState::Navigation(state) => {
@@ -225,7 +229,7 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
                 prepare_dlg(KbgpPrepare::Navigation(prp))
             });
             if kbgp.common.nodes.is_empty() {
-                kbgp.state = KbgpState::Inactive;
+                kbgp.state = KbgpState::Inactive(Default::default());
             }
         }
         KbgpState::PendingInput(state) => {
@@ -233,7 +237,7 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
                 prepare_dlg(KbgpPrepare::PendingInput(prp))
             });
             if kbgp.common.nodes.is_empty() {
-                kbgp.state = KbgpState::Inactive;
+                kbgp.state = KbgpState::Inactive(Default::default());
             }
         }
     }
@@ -302,15 +306,21 @@ struct KbgpCommon {
 }
 
 enum KbgpState {
-    Inactive,
+    Inactive(KbgpInactiveState),
     Navigation(KbgpNavigationState),
     PendingInput(KbgpPendingInputState),
 }
 
 impl Default for KbgpState {
     fn default() -> Self {
-        Self::Inactive
+        Self::Inactive(Default::default())
     }
+}
+
+/// Contains instructions for when exiting the inactive state.
+#[derive(Default)]
+pub(crate) struct KbgpInactiveState {
+    pub(crate) focus_on: Option<egui::Id>,
 }
 
 #[derive(Debug)]
@@ -503,10 +513,10 @@ pub trait KbgpEguiResponseExt {
 impl KbgpEguiResponseExt for egui::Response {
     fn kbgp_initial_focus(self) -> Self {
         let kbgp = kbgp_get(&self.ctx);
-        let kbgp = kbgp.lock();
-        match kbgp.state {
-            KbgpState::Inactive => {
-                self.request_focus();
+        let mut kbgp = kbgp.lock();
+        match &mut kbgp.state {
+            KbgpState::Inactive(state) => {
+                state.focus_on = Some(self.id);
             }
             KbgpState::Navigation(_) => {}
             KbgpState::PendingInput(_) => {}
@@ -524,15 +534,6 @@ impl KbgpEguiResponseExt for egui::Response {
                 seen_this_frame: true,
             },
         );
-        match &kbgp.state {
-            KbgpState::Inactive => {}
-            KbgpState::Navigation(state) => {
-                if Some(self.id) == state.move_focus || self.clicked() {
-                    self.request_focus();
-                }
-            }
-            KbgpState::PendingInput(_) => {}
-        }
         self
     }
 
@@ -565,7 +566,7 @@ impl KbgpEguiResponseExt for egui::Response {
         let kbgp = kbgp_get(&self.ctx);
         let mut kbgp = kbgp.lock();
         match &mut kbgp.state {
-            KbgpState::Inactive => None,
+            KbgpState::Inactive(_) => None,
             KbgpState::Navigation(_) => {
                 if self.clicked() {
                     kbgp.state = KbgpState::PendingInput(KbgpPendingInputState::new(self.id));
@@ -803,7 +804,7 @@ impl KbgpEguiUiCtxExt for egui::Context {
         let kbgp = kbgp_get(self);
         let mut kbgp = kbgp.lock();
         match &mut kbgp.state {
-            KbgpState::Inactive => {}
+            KbgpState::Inactive(_) => {}
             KbgpState::PendingInput(_) => {}
             KbgpState::Navigation(state) => {
                 state.user_action = None;
@@ -833,7 +834,7 @@ impl KbgpEguiUiCtxExt for egui::Context {
         let kbgp = kbgp_get(self);
         let kbgp = kbgp.lock();
         match &kbgp.state {
-            KbgpState::Inactive => None,
+            KbgpState::Inactive(_) => None,
             KbgpState::PendingInput(_) => None,
             KbgpState::Navigation(state) => state.user_action.as_ref()?.downcast_ref().cloned(),
         }

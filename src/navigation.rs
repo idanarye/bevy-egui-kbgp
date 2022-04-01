@@ -18,7 +18,6 @@ const INPUT_MASK_USER_ACTION: u8 = 32;
 
 #[derive(Default)]
 pub(crate) struct KbgpNavigationState {
-    pub(crate) move_focus: Option<egui::Id>,
     prev_input: u8,
     next_navigation: f64,
     pub(crate) user_action: Option<Box<dyn Any + Send + Sync>>,
@@ -136,8 +135,6 @@ impl KbgpNavigationState {
         egui_ctx: &egui::Context,
         prepare_dlg: impl FnOnce(&mut KbgpPrepareNavigation),
     ) {
-        self.move_focus = None;
-
         let mut handle = KbgpPrepareNavigation {
             secs_after_first_input: 0.6,
             secs_between_inputs: 0.04,
@@ -171,15 +168,16 @@ impl KbgpNavigationState {
                 self.user_action = handle.user_action;
             }
 
+            let mut move_focus_to = None;
+
             match effective_input & INPUT_MASK_VERTICAL {
                 INPUT_MASK_UP => {
-                    self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 {
-                        x: -x,
-                        y: -y,
+                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
+                        egui::Pos2 { x: -x, y: -y }
                     });
                 }
                 INPUT_MASK_DOWN => {
-                    self.move_focus(common, egui_ctx, |p| p);
+                    move_focus_to = self.move_focus(common, egui_ctx, |p| p);
                 }
                 _ => {}
             }
@@ -187,20 +185,23 @@ impl KbgpNavigationState {
             // anything focused will make left similar to up and right similar to down.
             match effective_input & INPUT_MASK_HORIZONTAL {
                 INPUT_MASK_LEFT => {
-                    self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 {
-                        x: -y,
-                        y: -x,
+                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
+                        egui::Pos2 { x: -y, y: -x }
                     });
                 }
                 INPUT_MASK_RIGHT => {
-                    self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 {
-                        x: y,
-                        y: x,
+                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
+                        egui::Pos2 { x: y, y: x }
                     });
                 }
                 _ => {}
             }
+
+            if let Some(move_focus) = move_focus_to {
+                egui_ctx.memory().request_focus(move_focus);
+            }
         }
+
         self.prev_input = handle.input;
     }
 
@@ -209,7 +210,7 @@ impl KbgpNavigationState {
         common: &KbgpCommon,
         egui_ctx: &egui::Context,
         transform_pos_downward: impl Fn(egui::Pos2) -> egui::Pos2,
-    ) {
+    ) -> Option<egui::Id> {
         let transform_rect_downward = |rect: egui::Rect| -> egui::Rect {
             let egui::Pos2 {
                 x: mut left,
@@ -238,11 +239,11 @@ impl KbgpNavigationState {
             .iter()
             .map(|(id, data)| (id, transform_rect_downward(data.rect)));
         let focused_node_id = egui_ctx.memory().focus();
-        let move_to = if let Some(focused_node_id) = focused_node_id {
+        if let Some(focused_node_id) = focused_node_id {
             let focused_node_rect = if let Some(data) = common.nodes.get(&focused_node_id) {
                 transform_rect_downward(data.rect)
             } else {
-                return;
+                return Some(focused_node_id);
             };
 
             #[derive(Debug)]
@@ -286,15 +287,12 @@ impl KbgpNavigationState {
                             .unwrap()
                     }
                 })
-                .map(|(id, _)| id)
+                .map(|(id, _)| *id)
         } else {
             transformed_nodes
                 .map(|(id, rect)| (id, (rect.min.y, rect.min.x)))
                 .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
-                .map(|(id, _)| id)
-        };
-        if let Some(id) = move_to {
-            self.move_focus = Some(*id);
+                .map(|(id, _)| *id)
         }
     }
 }
