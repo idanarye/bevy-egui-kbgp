@@ -172,27 +172,32 @@ impl KbgpNavigationState {
 
             match effective_input & INPUT_MASK_VERTICAL {
                 INPUT_MASK_UP => {
-                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
-                        egui::Pos2 { x: -x, y: -y }
-                    });
+                    move_focus_to =
+                        self.move_focus(common, egui_ctx, None, |egui::Pos2 { x, y }| egui::Pos2 {
+                            x: -x,
+                            y: -y,
+                        });
                 }
                 INPUT_MASK_DOWN => {
-                    move_focus_to = self.move_focus(common, egui_ctx, |p| p);
+                    move_focus_to = self.move_focus(common, egui_ctx, None, |p| p);
                 }
                 _ => {}
             }
+
             // Note: Doing transpose instead of rotation so that starting navigation without
             // anything focused will make left similar to up and right similar to down.
             match effective_input & INPUT_MASK_HORIZONTAL {
                 INPUT_MASK_LEFT => {
-                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
-                        egui::Pos2 { x: -y, y: -x }
-                    });
+                    move_focus_to =
+                        self.move_focus(common, egui_ctx, move_focus_to, |egui::Pos2 { x, y }| {
+                            egui::Pos2 { x: -y, y: -x }
+                        });
                 }
                 INPUT_MASK_RIGHT => {
-                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
-                        egui::Pos2 { x: y, y: x }
-                    });
+                    move_focus_to =
+                        self.move_focus(common, egui_ctx, move_focus_to, |egui::Pos2 { x, y }| {
+                            egui::Pos2 { x: y, y: x }
+                        });
                 }
                 _ => {}
             }
@@ -209,6 +214,7 @@ impl KbgpNavigationState {
         &mut self,
         common: &KbgpCommon,
         egui_ctx: &egui::Context,
+        move_from: Option<egui::Id>,
         transform_pos_downward: impl Fn(egui::Pos2) -> egui::Pos2,
     ) -> Option<egui::Id> {
         let transform_rect_downward = |rect: egui::Rect| -> egui::Rect {
@@ -238,7 +244,7 @@ impl KbgpNavigationState {
             .nodes
             .iter()
             .map(|(id, data)| (id, transform_rect_downward(data.rect)));
-        let focused_node_id = egui_ctx.memory().focus();
+        let focused_node_id = move_from.or_else(|| egui_ctx.memory().focus());
         if let Some(focused_node_id) = focused_node_id {
             let focused_node_rect = if let Some(data) = common.nodes.get(&focused_node_id) {
                 transform_rect_downward(data.rect)

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 - Changed the navigation code so that KBGP navigation will make egui emit `FocusGained` output
   events.
+- Fix diagonal navigation.
 
 ## 0.2.0 - 2022-03-23
 ### Added
