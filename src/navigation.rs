@@ -172,9 +172,8 @@ impl KbgpNavigationState {
 
             match effective_input & INPUT_MASK_VERTICAL {
                 INPUT_MASK_UP => {
-                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 {
-                        x: -x,
-                        y: -y,
+                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
+                        egui::Pos2 { x: -x, y: -y }
                     });
                 }
                 INPUT_MASK_DOWN => {
@@ -186,15 +185,13 @@ impl KbgpNavigationState {
             // anything focused will make left similar to up and right similar to down.
             match effective_input & INPUT_MASK_HORIZONTAL {
                 INPUT_MASK_LEFT => {
-                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 {
-                        x: -y,
-                        y: -x,
+                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
+                        egui::Pos2 { x: -y, y: -x }
                     });
                 }
                 INPUT_MASK_RIGHT => {
-                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| egui::Pos2 {
-                        x: y,
-                        y: x,
+                    move_focus_to = self.move_focus(common, egui_ctx, |egui::Pos2 { x, y }| {
+                        egui::Pos2 { x: y, y: x }
                     });
                 }
                 _ => {}
