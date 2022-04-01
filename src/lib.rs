@@ -524,15 +524,6 @@ impl KbgpEguiResponseExt for egui::Response {
                 seen_this_frame: true,
             },
         );
-        match &kbgp.state {
-            KbgpState::Inactive => {}
-            KbgpState::Navigation(state) => {
-                if Some(self.id) == state.move_focus || self.clicked() {
-                    self.request_focus();
-                }
-            }
-            KbgpState::PendingInput(_) => {}
-        }
         self
     }
 
