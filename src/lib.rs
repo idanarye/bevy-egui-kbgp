@@ -113,6 +113,27 @@ impl Plugin for KbgpPlugin {
 /// should either be added after the plugin or modified with a system. The default is to enable
 /// everything except the mouse wheel.
 pub struct KbgpSettings {
+    /// Whether or not egui's tab navigation should work
+    pub disable_default_navigation: bool,
+    /// Whether or not egui's Enter and Space should work. These keys can still be assigned with
+    /// [`bindings`](KbgpSettings::bindings):
+    ///
+    /// ```no_run
+    /// # use bevy::prelude::*;
+    /// # use bevy_egui_kbgp::prelude::*;
+    /// App::new()
+    ///     // ...
+    ///     .insert_resource(KbgpSettings {
+    ///         disable_default_activation: true,
+    ///         bindings: KbgpNavBindings::default()
+    ///             .with_key(KeyCode::Space, KbgpNavCommand::Click)
+    ///             .with_key(KeyCode::Return, KbgpNavCommand::Click),
+    ///         ..Default::default()
+    ///     })
+    ///     // ...
+    /// # ;
+    /// ```
+    pub disable_default_activation: bool,
     /// Whether or not keyboard input is accepted for navigation and for chords.
     pub allow_keyboard: bool,
     /// Whether or not mouse buttons are accepted for chords.
@@ -130,6 +151,8 @@ pub struct KbgpSettings {
 impl Default for KbgpSettings {
     fn default() -> Self {
         Self {
+            disable_default_navigation: false,
+            disable_default_activation: false,
             allow_keyboard: true,
             allow_mouse_buttons: true,
             allow_mouse_wheel: false,
@@ -243,6 +266,28 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
     }
 }
 
+/// Cancel's any tab-based navigation egui did in its `BeginFrame`.
+pub fn kbgp_intercept_default_navigation(egui_ctx: &egui::Context) {
+    let mut egui_memory = egui_ctx.memory();
+    if let Some(focus) = egui_memory.focus() {
+        egui_memory.lock_focus(focus, true);
+    }
+}
+
+/// Hide from egui Space and Enter key events.
+///
+/// KBGP gets its keys directly from Bevy, so this function will not hide these keys from it.
+pub fn kbgp_intercept_default_activation(egui_ctx: &egui::Context) {
+    egui_ctx.input_mut().events.retain(|evt| match evt {
+        egui::Event::Key {
+            key,
+            pressed: true,
+            modifiers: _,
+        } => !matches!(key, egui::Key::Enter | egui::Key::Space),
+        _ => true,
+    });
+}
+
 /// System that operates KBGP with the default input scheme.
 ///
 /// * Keyboard:
@@ -263,7 +308,14 @@ fn kbgp_system_default_input(
     gamepad_axes: Res<Axis<GamepadAxis>>,
     gamepad_buttons: Res<Input<GamepadButton>>,
 ) {
-    kbgp_prepare(egui_context.ctx_mut(), |prp| match prp {
+    let egui_ctx = egui_context.ctx_mut();
+    if settings.disable_default_navigation {
+        kbgp_intercept_default_navigation(egui_ctx);
+    }
+    if settings.disable_default_activation {
+        kbgp_intercept_default_activation(egui_ctx);
+    }
+    kbgp_prepare(egui_ctx, |prp| match prp {
         KbgpPrepare::Navigation(prp) => {
             if settings.allow_keyboard {
                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);

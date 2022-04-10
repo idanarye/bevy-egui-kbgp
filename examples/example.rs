@@ -25,6 +25,8 @@ fn main() {
         .add_plugin(KbgpPlugin)
         .insert_resource(EguiSettings { scale_factor: 1.5 })
         .insert_resource(KbgpSettings {
+            disable_default_navigation: true,
+            disable_default_activation: true,
             allow_keyboard: true,
             allow_mouse_buttons: true,
             allow_mouse_wheel: true,
@@ -33,6 +35,7 @@ fn main() {
             bindings: {
                 bevy_egui_kbgp::KbgpNavBindings::default()
                     .with_wasd_navigation()
+                    .with_key(KeyCode::Space, KbgpNavCommand::Click)
                     // Special actions - keyboard:
                     .with_key(KeyCode::PageUp, KbgpNavCommand::user(MyActions::PrevMenu))
                     .with_key(KeyCode::PageDown, KbgpNavCommand::user(MyActions::NextMenu))
