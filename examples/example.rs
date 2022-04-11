@@ -18,6 +18,12 @@ enum MyActions {
     Delete,
 }
 
+#[derive(PartialEq)]
+enum MyFocusLabel {
+    PrevMenu,
+    NextMenu,
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -82,11 +88,13 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
         if ui
             .button(format!("<<{:?}<<", prev_state))
             .kbgp_navigation()
+            .kbgp_focus_label(MyFocusLabel::PrevMenu)
             .clicked()
             || ui.kbgp_user_action() == Some(MyActions::PrevMenu)
         {
             state.set(prev_state).unwrap();
             ui.kbgp_clear_input();
+            ui.kbgp_set_focus_label(MyFocusLabel::PrevMenu);
         }
 
         ui.label(format!("{:?}", state.current()));
@@ -95,11 +103,13 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             .button(format!(">>{:?}>>", next_state))
             .kbgp_navigation()
             .kbgp_initial_focus()
+            .kbgp_focus_label(MyFocusLabel::NextMenu)
             .clicked()
             || ui.kbgp_user_action() == Some(MyActions::NextMenu)
         {
             state.set(next_state).unwrap();
             ui.ctx().kbgp_clear_input();
+            ui.ctx().kbgp_set_focus_label(MyFocusLabel::NextMenu);
         }
     });
 }
@@ -272,6 +282,30 @@ fn ui_system(
                 }
             });
         }
+
+        ui.horizontal(|ui| {
+            #[derive(PartialEq)]
+            enum FocusLabel {
+                Left,
+                Right,
+            }
+            if ui
+                .button("Focus >")
+                .kbgp_navigation()
+                .kbgp_focus_label(FocusLabel::Left)
+                .clicked()
+            {
+                ui.kbgp_set_focus_label(FocusLabel::Right);
+            }
+            if ui
+                .button("< Focus")
+                .kbgp_navigation()
+                .kbgp_focus_label(FocusLabel::Right)
+                .clicked()
+            {
+                ui.kbgp_set_focus_label(FocusLabel::Left);
+            }
+        });
     });
 }
 

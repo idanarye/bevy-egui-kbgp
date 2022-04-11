@@ -5,7 +5,10 @@
 //! * Use [the extension methods](crate::KbgpEguiResponseExt) on the egui widgets to add KBGP's
 //!   functionality.
 //! * Call [`ui.kbgp_clear_input`](crate::KbgpEguiUiCtxExt::kbgp_clear_input) when triggering a
-//!   state transition as a response to a click on an egui widget.
+//!   state transition as a response to a click on an egui widget. To control the focus in the new
+//!   state, use [`kbgp_focus_label`](KbgpEguiResponseExt::kbgp_focus_label) (and
+//!   [`kbgp_set_focus_label`](KbgpEguiUiCtxExt::kbgp_set_focus_label)) - otherwise egui will pick
+//!   the widget to focus on (or elect to drop the focus entirely)
 //! * To set special actions, see [the example here](crate::KbgpNavCommand::user).
 //!
 //! ```no_run
@@ -238,29 +241,24 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
     }
     let Kbgp { common, state } = &mut *kbgp;
     match state {
-        KbgpState::Inactive(state) => {
-            let KbgpInactiveState { focus_on } = *state;
-            if !kbgp.common.nodes.is_empty() {
-                kbgp.state = KbgpState::Navigation(KbgpNavigationState::default());
-                if let Some(focus_on) = focus_on {
-                    egui_ctx.memory().request_focus(focus_on);
-                }
-            }
-        }
         KbgpState::Navigation(state) => {
             state.prepare(common, egui_ctx, |prp| {
                 prepare_dlg(KbgpPrepare::Navigation(prp))
             });
-            if kbgp.common.nodes.is_empty() {
-                kbgp.state = KbgpState::Inactive(Default::default());
+            if let Some(focus_on) = state.focus_on.take() {
+                egui_ctx.memory().request_focus(focus_on);
+            }
+            state.focus_label = state.next_frame_focus_label.take();
+            if common.nodes.is_empty() && state.focus_label.is_none() {
+                state.focus_label = Some(Box::new(KbgpInitialFocusLabel));
             }
         }
         KbgpState::PendingInput(state) => {
             state.prepare(common, egui_ctx, |prp| {
                 prepare_dlg(KbgpPrepare::PendingInput(prp))
             });
-            if kbgp.common.nodes.is_empty() {
-                kbgp.state = KbgpState::Inactive(Default::default());
+            if common.nodes.is_empty() {
+                kbgp.state = KbgpState::Navigation(Default::default());
             }
         }
     }
@@ -358,21 +356,14 @@ struct KbgpCommon {
 }
 
 enum KbgpState {
-    Inactive(KbgpInactiveState),
     Navigation(KbgpNavigationState),
     PendingInput(KbgpPendingInputState),
 }
 
 impl Default for KbgpState {
     fn default() -> Self {
-        Self::Inactive(Default::default())
+        Self::Navigation(Default::default())
     }
-}
-
-/// Contains instructions for when exiting the inactive state.
-#[derive(Default)]
-pub(crate) struct KbgpInactiveState {
-    pub(crate) focus_on: Option<egui::Id>,
 }
 
 #[derive(Debug)]
@@ -380,6 +371,9 @@ struct NodeData {
     rect: egui::Rect,
     seen_this_frame: bool,
 }
+
+#[derive(PartialEq)]
+struct KbgpInitialFocusLabel;
 
 /// Extensions for egui's `Response` to activate KBGP's functionality.
 ///
@@ -397,9 +391,50 @@ struct NodeData {
 ///     // ...
 /// }
 /// ```
-pub trait KbgpEguiResponseExt {
+pub trait KbgpEguiResponseExt: Sized {
+    /// Focus on this widget when [`kbgp_set_focus_label`](KbgpEguiUiCtxExt::kbgp_set_focus_label)
+    /// is called with the same label.
+    ///
+    /// This will only happen if `kbgp_set_focus_label` was called in the previous frame. A single
+    /// widget can be marked with multiple labels by calling `kbgp_focus_label` multiple times.
+    ///
+    /// ```no_run
+    /// # use bevy_egui_kbgp::egui;
+    /// # use bevy_egui_kbgp::prelude::*;
+    /// # let ui: egui::Ui = todo!();
+    /// #[derive(PartialEq)]
+    /// enum FocusLabel {
+    ///     Left,
+    ///     Right,
+    /// }
+    /// if ui
+    ///     .button("Focus >")
+    ///     .kbgp_navigation()
+    ///     .kbgp_focus_label(FocusLabel::Left)
+    ///     .clicked()
+    /// {
+    ///     ui.kbgp_set_focus_label(FocusLabel::Right);
+    /// }
+    /// if ui
+    ///     .button("< Focus")
+    ///     .kbgp_navigation()
+    ///     .kbgp_focus_label(FocusLabel::Right)
+    ///     .clicked()
+    /// {
+    ///     ui.kbgp_set_focus_label(FocusLabel::Left);
+    /// }
+    /// ```
+    fn kbgp_focus_label<T: 'static + PartialEq<T>>(self, label: T) -> Self;
+
     /// When the UI is first created, focus on this widget.
-    fn kbgp_initial_focus(self) -> Self;
+    ///
+    /// Note that if [`kbgp_set_focus_label`](KbgpEguiUiCtxExt::kbgp_set_focus_label) was called in
+    /// the previous frame the widget marked with
+    /// [`kbgp_focus_label`](KbgpEguiResponseExt::kbgp_focus_label) will receive focus instead. A
+    /// single widget can be marked with both `kbgp_focus_label` and `kbgp_initial_focus`.
+    fn kbgp_initial_focus(self) -> Self {
+        self.kbgp_focus_label(KbgpInitialFocusLabel)
+    }
 
     /// Navigate to and from this widget.
     fn kbgp_navigation(self) -> Self;
@@ -563,18 +598,37 @@ pub trait KbgpEguiResponseExt {
 }
 
 impl KbgpEguiResponseExt for egui::Response {
-    fn kbgp_initial_focus(self) -> Self {
+    fn kbgp_focus_label<T: 'static + PartialEq<T>>(self, label: T) -> Self {
         let kbgp = kbgp_get(&self.ctx);
         let mut kbgp = kbgp.lock();
         match &mut kbgp.state {
-            KbgpState::Inactive(state) => {
-                state.focus_on = Some(self.id);
+            KbgpState::Navigation(state) => {
+                if let Some(focus_label) = &state.focus_label {
+                    if let Some(focus_label) = focus_label.downcast_ref::<T>() {
+                        if focus_label == &label {
+                            state.focus_label = None;
+                            state.focus_on = Some(self.id);
+                        }
+                    }
+                }
             }
-            KbgpState::Navigation(_) => {}
             KbgpState::PendingInput(_) => {}
         }
         self
     }
+
+    //fn kbgp_initial_focus(self) -> Self {
+    //let kbgp = kbgp_get(&self.ctx);
+    //let mut kbgp = kbgp.lock();
+    //match &mut kbgp.state {
+    //KbgpState::Inactive(state) => {
+    //state.focus_on = Some(self.id);
+    //}
+    //KbgpState::Navigation(_) => {}
+    //KbgpState::PendingInput(_) => {}
+    //}
+    //self
+    //}
 
     fn kbgp_navigation(self) -> Self {
         let kbgp = kbgp_get(&self.ctx);
@@ -618,7 +672,6 @@ impl KbgpEguiResponseExt for egui::Response {
         let kbgp = kbgp_get(&self.ctx);
         let mut kbgp = kbgp.lock();
         match &mut kbgp.state {
-            KbgpState::Inactive(_) => None,
             KbgpState::Navigation(_) => {
                 if self.clicked() {
                     kbgp.state = KbgpState::PendingInput(KbgpPendingInputState::new(self.id));
@@ -820,6 +873,12 @@ pub trait KbgpEguiUiCtxExt {
     /// GUI in the new state.
     fn kbgp_clear_input(&self);
 
+    /// Focus on the widget that called [`kbgp_focus_label`](KbgpEguiResponseExt::kbgp_focus_label)
+    /// with the same label.
+    ///
+    /// This will only happen on the next frame.
+    fn kbgp_set_focus_label<T: 'static + Send + Sync>(&self, label: T);
+
     /// Check if the player pressed a user action button.
     ///
     /// Note that if the focus is on a widget that handles a user action, it will be reported both
@@ -846,6 +905,10 @@ impl KbgpEguiUiCtxExt for egui::Ui {
         self.ctx().kbgp_clear_input()
     }
 
+    fn kbgp_set_focus_label<T: 'static + Send + Sync>(&self, label: T) {
+        self.ctx().kbgp_set_focus_label(label);
+    }
+
     fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T> {
         self.ctx().kbgp_user_action()
     }
@@ -856,7 +919,6 @@ impl KbgpEguiUiCtxExt for egui::Context {
         let kbgp = kbgp_get(self);
         let mut kbgp = kbgp.lock();
         match &mut kbgp.state {
-            KbgpState::Inactive(_) => {}
             KbgpState::PendingInput(_) => {}
             KbgpState::Navigation(state) => {
                 state.user_action = None;
@@ -882,11 +944,21 @@ impl KbgpEguiUiCtxExt for egui::Context {
         });
     }
 
+    fn kbgp_set_focus_label<T: 'static + Send + Sync>(&self, label: T) {
+        let kbgp = kbgp_get(self);
+        let mut kbgp = kbgp.lock();
+        match &mut kbgp.state {
+            KbgpState::PendingInput(_) => {}
+            KbgpState::Navigation(state) => {
+                state.next_frame_focus_label = Some(Box::new(label));
+            }
+        }
+    }
+
     fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T> {
         let kbgp = kbgp_get(self);
         let kbgp = kbgp.lock();
         match &kbgp.state {
-            KbgpState::Inactive(_) => None,
             KbgpState::PendingInput(_) => None,
             KbgpState::Navigation(state) => state.user_action.as_ref()?.downcast_ref().cloned(),
         }

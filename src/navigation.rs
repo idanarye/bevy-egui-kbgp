@@ -21,6 +21,9 @@ pub(crate) struct KbgpNavigationState {
     prev_input: u8,
     next_navigation: f64,
     pub(crate) user_action: Option<Box<dyn Any + Send + Sync>>,
+    pub(crate) focus_label: Option<Box<dyn Any + Send + Sync>>,
+    pub(crate) next_frame_focus_label: Option<Box<dyn Any + Send + Sync>>,
+    pub(crate) focus_on: Option<egui::Id>,
 }
 
 /// An option of [`KbgpPrepare`](crate::KbgpPrepare).
