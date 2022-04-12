@@ -9,7 +9,9 @@
 //!   state, use [`kbgp_focus_label`](KbgpEguiResponseExt::kbgp_focus_label) (and
 //!   [`kbgp_set_focus_label`](KbgpEguiUiCtxExt::kbgp_set_focus_label)) - otherwise egui will pick
 //!   the widget to focus on (or elect to drop the focus entirely)
-//! * To set special actions, see [the example here](crate::KbgpNavCommand::user).
+//! * To set special actions, see [the example here](crate::KbgpNavCommand::user). To avoid having
+//!   to deal with both Bevy's input methods and KBGP's input, it's better to use these actions for
+//!   entering the pause menu from within the game.
 //!
 //! ```no_run
 //! use bevy_egui_kbgp::{egui, bevy_egui};
