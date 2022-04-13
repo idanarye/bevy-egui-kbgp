@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## 0.3.0 - 2022-04-13
 ### Added
 - [**BREAKING**] Settings to disable egui's default navigation and activation.
 - `kbgp_focus_label` and `kbgp_set_focus_label` to control the focus.
