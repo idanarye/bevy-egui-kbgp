@@ -139,6 +139,12 @@ pub struct KbgpSettings {
     /// # ;
     /// ```
     pub disable_default_activation: bool,
+    /// Whether or not to force that there is always an egui widget that has the focus.
+    pub prevent_lost_of_focus: bool,
+    /// Whether or not to transfer focus when the mouse moves into a widget.
+    ///
+    /// Only works for widgets marked with [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation).
+    pub focus_on_mouse_movement: bool,
     /// Whether or not keyboard input is accepted for navigation and for chords.
     pub allow_keyboard: bool,
     /// Whether or not mouse buttons are accepted for chords.
@@ -158,6 +164,8 @@ impl Default for KbgpSettings {
         Self {
             disable_default_navigation: false,
             disable_default_activation: false,
+            prevent_lost_of_focus: false,
+            focus_on_mouse_movement: false,
             allow_keyboard: true,
             allow_mouse_buttons: true,
             allow_mouse_wheel: false,
@@ -288,6 +296,52 @@ pub fn kbgp_intercept_default_activation(egui_ctx: &egui::Context) {
     });
 }
 
+/// Make sure there is always an egui widget that has the focus.
+pub fn kbgp_prevent_lost_of_focus(egui_ctx: &egui::Context) {
+    let kbgp = kbgp_get(egui_ctx);
+    let mut kbgp = kbgp.lock();
+
+    match &mut kbgp.state {
+        KbgpState::PendingInput(_) => {}
+        KbgpState::Navigation(state) => {
+            let current_focus = egui_ctx.memory().focus();
+            if let Some(current_focus) = current_focus {
+                state.last_focus = Some(current_focus);
+            } else if let Some(last_focus) = state.last_focus.take() {
+                egui_ctx.memory().request_focus(last_focus);
+            }
+        }
+    }
+}
+
+/// Transfer focus when the mouse moves into a widget.
+///
+/// Only works for widgets marked with [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation).
+pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
+    let kbgp = kbgp_get(egui_ctx);
+    let mut kbgp = kbgp.lock();
+
+    let Kbgp { common, state } = &mut *kbgp;
+
+    match state {
+        KbgpState::PendingInput(_) => {}
+        KbgpState::Navigation(state) => {
+            let node_at_pos = egui_ctx.input().pointer.interact_pos().and_then(|pos| {
+                common
+                    .nodes
+                    .iter()
+                    .find_map(|(node_id, node_data)| node_data.rect.contains(pos).then(|| *node_id))
+            });
+            if node_at_pos != state.mouse_was_last_on {
+                state.mouse_was_last_on = node_at_pos;
+                if let Some(node_at_pos) = node_at_pos {
+                    egui_ctx.memory().request_focus(node_at_pos);
+                }
+            }
+        }
+    }
+}
+
 /// System that operates KBGP with the default input scheme.
 ///
 /// * Keyboard:
@@ -315,6 +369,13 @@ fn kbgp_system_default_input(
     if settings.disable_default_activation {
         kbgp_intercept_default_activation(egui_ctx);
     }
+    if settings.prevent_lost_of_focus {
+        kbgp_prevent_lost_of_focus(egui_ctx);
+    }
+    if settings.focus_on_mouse_movement {
+        kbgp_focus_on_mouse_movement(egui_ctx);
+    }
+
     kbgp_prepare(egui_ctx, |prp| match prp {
         KbgpPrepare::Navigation(prp) => {
             if settings.allow_keyboard {

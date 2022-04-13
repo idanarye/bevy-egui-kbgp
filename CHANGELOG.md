@@ -6,8 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- Settings to disable egui's default navigation and activation.
+- [**BREAKING**] Settings to disable egui's default navigation and activation.
 - `kbgp_focus_label` and `kbgp_set_focus_label` to control the focus.
+- [**BREAKING**] Setting to prevent egui from ever losing focus.
+- [**BREAKING**] Setting to give focus to widgets hovered by the mouse.
 
 ## 0.2.1 - 2022-02-02
 ### Fixed

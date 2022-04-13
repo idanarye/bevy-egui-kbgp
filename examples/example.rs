@@ -33,6 +33,8 @@ fn main() {
         .insert_resource(KbgpSettings {
             disable_default_navigation: true,
             disable_default_activation: true,
+            prevent_lost_of_focus: true,
+            focus_on_mouse_movement: true,
             allow_keyboard: true,
             allow_mouse_buttons: true,
             allow_mouse_wheel: true,
