@@ -140,7 +140,7 @@ pub struct KbgpSettings {
     /// ```
     pub disable_default_activation: bool,
     /// Whether or not to force that there is always an egui widget that has the focus.
-    pub prevent_lost_of_focus: bool,
+    pub prevent_loss_of_focus: bool,
     /// Whether or not to transfer focus when the mouse moves into a widget.
     ///
     /// Only works for widgets marked with [`kbgp_navigation`](crate::KbgpEguiResponseExt::kbgp_navigation).
@@ -164,7 +164,7 @@ impl Default for KbgpSettings {
         Self {
             disable_default_navigation: false,
             disable_default_activation: false,
-            prevent_lost_of_focus: false,
+            prevent_loss_of_focus: false,
             focus_on_mouse_movement: false,
             allow_keyboard: true,
             allow_mouse_buttons: true,
@@ -297,7 +297,7 @@ pub fn kbgp_intercept_default_activation(egui_ctx: &egui::Context) {
 }
 
 /// Make sure there is always an egui widget that has the focus.
-pub fn kbgp_prevent_lost_of_focus(egui_ctx: &egui::Context) {
+pub fn kbgp_prevent_loss_of_focus(egui_ctx: &egui::Context) {
     let kbgp = kbgp_get(egui_ctx);
     let mut kbgp = kbgp.lock();
 
@@ -369,8 +369,8 @@ fn kbgp_system_default_input(
     if settings.disable_default_activation {
         kbgp_intercept_default_activation(egui_ctx);
     }
-    if settings.prevent_lost_of_focus {
-        kbgp_prevent_lost_of_focus(egui_ctx);
+    if settings.prevent_loss_of_focus {
+        kbgp_prevent_loss_of_focus(egui_ctx);
     }
     if settings.focus_on_mouse_movement {
         kbgp_focus_on_mouse_movement(egui_ctx);
