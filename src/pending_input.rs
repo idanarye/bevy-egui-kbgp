@@ -188,18 +188,16 @@ impl KbgpPreparePendingInput {
         buttons: &Input<GamepadButton>,
     ) {
         self.accept_inputs(buttons.get_pressed().copied().map(KbgpInput::GamepadButton));
-        for gamepad in gamepads.iter() {
-            for gamepad_axis_type in [
+        for &gamepad in gamepads.iter() {
+            for axis_type in [
                 GamepadAxisType::LeftStickX,
                 GamepadAxisType::LeftStickY,
                 GamepadAxisType::LeftZ,
                 GamepadAxisType::RightStickX,
                 GamepadAxisType::RightStickY,
                 GamepadAxisType::RightZ,
-                GamepadAxisType::DPadX,
-                GamepadAxisType::DPadY,
             ] {
-                let gamepad_axis = GamepadAxis(*gamepad, gamepad_axis_type);
+                let gamepad_axis = GamepadAxis { gamepad, axis_type };
                 if let Some(axis_value) = axes.get(gamepad_axis) {
                     if 0.5 < axis_value {
                         self.accept_input(KbgpInput::GamepadAxisPositive(gamepad_axis));

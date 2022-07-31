@@ -851,14 +851,14 @@ impl core::fmt::Display for KbgpInput {
             KbgpInput::MouseWheelDown => write!(f, "MouseScrollDown")?,
             KbgpInput::MouseWheelLeft => write!(f, "MouseScrollLeft")?,
             KbgpInput::MouseWheelRight => write!(f, "MouseScrollRight")?,
-            KbgpInput::GamepadButton(GamepadButton(Gamepad(gamepad), button)) => {
-                write!(f, "[{}]{:?}", gamepad, button)?
+            KbgpInput::GamepadButton(GamepadButton { gamepad: Gamepad { id }, button_type }) => {
+                write!(f, "[{}]{:?}", id, button_type)?
             }
-            KbgpInput::GamepadAxisPositive(GamepadAxis(Gamepad(gamepad), axis)) => {
-                write!(f, "[{}]{:?}", gamepad, axis)?
+            KbgpInput::GamepadAxisPositive(GamepadAxis { gamepad: Gamepad { id }, axis_type }) => {
+                write!(f, "[{}]{:?}", id, axis_type)?
             }
-            KbgpInput::GamepadAxisNegative(GamepadAxis(Gamepad(gamepad), axis)) => {
-                write!(f, "[{}]-{:?}", gamepad, axis)?
+            KbgpInput::GamepadAxisNegative(GamepadAxis { gamepad: Gamepad { id }, axis_type }) => {
+                write!(f, "[{}]-{:?}", id, axis_type)?
             }
         }
         Ok(())
@@ -888,13 +888,13 @@ impl KbgpInput {
             KbgpInput::MouseWheelDown => KbgpInputSource::KeyboardAndMouse,
             KbgpInput::MouseWheelLeft => KbgpInputSource::KeyboardAndMouse,
             KbgpInput::MouseWheelRight => KbgpInputSource::KeyboardAndMouse,
-            KbgpInput::GamepadAxisPositive(GamepadAxis(gamepad, _)) => {
+            KbgpInput::GamepadAxisPositive(GamepadAxis { gamepad, axis_type: _ }) => {
                 KbgpInputSource::Gamepad(*gamepad)
             }
-            KbgpInput::GamepadAxisNegative(GamepadAxis(gamepad, _)) => {
+            KbgpInput::GamepadAxisNegative(GamepadAxis { gamepad, axis_type: _ }) => {
                 KbgpInputSource::Gamepad(*gamepad)
             }
-            KbgpInput::GamepadButton(GamepadButton(gamepad, _)) => {
+            KbgpInput::GamepadButton(GamepadButton { gamepad, button_type: _ }) => {
                 KbgpInputSource::Gamepad(*gamepad)
             }
         }
@@ -913,7 +913,7 @@ impl core::fmt::Display for KbgpInputSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             KbgpInputSource::KeyboardAndMouse => write!(f, "Keyboard&Mouse"),
-            KbgpInputSource::Gamepad(Gamepad(gamepad)) => write!(f, "Gamepad {}", gamepad),
+            KbgpInputSource::Gamepad(Gamepad { id }) => write!(f, "Gamepad {}", id),
         }
     }
 }

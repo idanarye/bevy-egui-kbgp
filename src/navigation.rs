@@ -93,18 +93,8 @@ impl KbgpPrepareNavigation {
         buttons: &Input<GamepadButton>,
         binding: &HashMap<GamepadButtonType, KbgpNavCommand>,
     ) {
-        for gamepad in gamepads.iter() {
+        for &gamepad in gamepads.iter() {
             for (axis_type, action_for_negative, action_for_positive) in [
-                (
-                    GamepadAxisType::DPadX,
-                    KbgpNavCommand::NavigateLeft,
-                    KbgpNavCommand::NavigateRight,
-                ),
-                (
-                    GamepadAxisType::DPadY,
-                    KbgpNavCommand::NavigateDown,
-                    KbgpNavCommand::NavigateUp,
-                ),
                 (
                     GamepadAxisType::LeftStickX,
                     KbgpNavCommand::NavigateLeft,
@@ -116,7 +106,7 @@ impl KbgpPrepareNavigation {
                     KbgpNavCommand::NavigateUp,
                 ),
             ] {
-                if let Some(axis_value) = axes.get(GamepadAxis(*gamepad, axis_type)) {
+                if let Some(axis_value) = axes.get(GamepadAxis { gamepad, axis_type }) {
                     if axis_value < -0.5 {
                         self.apply_action(&action_for_negative)
                     } else if 0.5 < axis_value {
@@ -125,7 +115,7 @@ impl KbgpPrepareNavigation {
                 }
             }
         }
-        for GamepadButton(_, button_type) in buttons.get_pressed() {
+        for GamepadButton { gamepad: _, button_type } in buttons.get_pressed() {
             if let Some(action) = binding.get(button_type) {
                 self.apply_action(action);
             }
