@@ -851,15 +851,18 @@ impl core::fmt::Display for KbgpInput {
             KbgpInput::MouseWheelDown => write!(f, "MouseScrollDown")?,
             KbgpInput::MouseWheelLeft => write!(f, "MouseScrollLeft")?,
             KbgpInput::MouseWheelRight => write!(f, "MouseScrollRight")?,
-            KbgpInput::GamepadButton(GamepadButton { gamepad: Gamepad { id }, button_type }) => {
-                write!(f, "[{}]{:?}", id, button_type)?
-            }
-            KbgpInput::GamepadAxisPositive(GamepadAxis { gamepad: Gamepad { id }, axis_type }) => {
-                write!(f, "[{}]{:?}", id, axis_type)?
-            }
-            KbgpInput::GamepadAxisNegative(GamepadAxis { gamepad: Gamepad { id }, axis_type }) => {
-                write!(f, "[{}]-{:?}", id, axis_type)?
-            }
+            KbgpInput::GamepadButton(GamepadButton {
+                gamepad: Gamepad { id },
+                button_type,
+            }) => write!(f, "[{}]{:?}", id, button_type)?,
+            KbgpInput::GamepadAxisPositive(GamepadAxis {
+                gamepad: Gamepad { id },
+                axis_type,
+            }) => write!(f, "[{}]{:?}", id, axis_type)?,
+            KbgpInput::GamepadAxisNegative(GamepadAxis {
+                gamepad: Gamepad { id },
+                axis_type,
+            }) => write!(f, "[{}]-{:?}", id, axis_type)?,
         }
         Ok(())
     }
@@ -888,15 +891,18 @@ impl KbgpInput {
             KbgpInput::MouseWheelDown => KbgpInputSource::KeyboardAndMouse,
             KbgpInput::MouseWheelLeft => KbgpInputSource::KeyboardAndMouse,
             KbgpInput::MouseWheelRight => KbgpInputSource::KeyboardAndMouse,
-            KbgpInput::GamepadAxisPositive(GamepadAxis { gamepad, axis_type: _ }) => {
-                KbgpInputSource::Gamepad(*gamepad)
-            }
-            KbgpInput::GamepadAxisNegative(GamepadAxis { gamepad, axis_type: _ }) => {
-                KbgpInputSource::Gamepad(*gamepad)
-            }
-            KbgpInput::GamepadButton(GamepadButton { gamepad, button_type: _ }) => {
-                KbgpInputSource::Gamepad(*gamepad)
-            }
+            KbgpInput::GamepadAxisPositive(GamepadAxis {
+                gamepad,
+                axis_type: _,
+            }) => KbgpInputSource::Gamepad(*gamepad),
+            KbgpInput::GamepadAxisNegative(GamepadAxis {
+                gamepad,
+                axis_type: _,
+            }) => KbgpInputSource::Gamepad(*gamepad),
+            KbgpInput::GamepadButton(GamepadButton {
+                gamepad,
+                button_type: _,
+            }) => KbgpInputSource::Gamepad(*gamepad),
         }
     }
 }

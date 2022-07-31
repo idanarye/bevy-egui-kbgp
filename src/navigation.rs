@@ -115,7 +115,11 @@ impl KbgpPrepareNavigation {
                 }
             }
         }
-        for GamepadButton { gamepad: _, button_type } in buttons.get_pressed() {
+        for GamepadButton {
+            gamepad: _,
+            button_type,
+        } in buttons.get_pressed()
+        {
             if let Some(action) = binding.get(button_type) {
                 self.apply_action(action);
             }
