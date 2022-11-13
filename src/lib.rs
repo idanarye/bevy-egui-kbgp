@@ -117,6 +117,7 @@ impl Plugin for KbgpPlugin {
 /// Note: [`KbgpPlugin`](crate::KbgpPlugin) will add the default settings, so custom settings
 /// should either be added after the plugin or modified with a system. The default is to enable
 /// everything except the mouse wheel.
+#[derive(Resource)]
 pub struct KbgpSettings {
     /// Whether or not egui's tab navigation should work
     pub disable_default_navigation: bool,
@@ -556,6 +557,7 @@ pub trait KbgpEguiResponseExt: Sized {
     ///         .run();
     /// }
     ///
+    /// #[derive(Resource)]
     /// struct JumpInput(KbgpInput);
     ///
     /// fn ui_system(
@@ -603,6 +605,7 @@ pub trait KbgpEguiResponseExt: Sized {
     ///         .run();
     /// }
     ///
+    /// #[derive(Resource)]
     /// struct JumpChord(Vec<KbgpInput>);
     ///
     /// fn ui_system(

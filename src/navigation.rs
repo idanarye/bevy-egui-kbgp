@@ -93,7 +93,7 @@ impl KbgpPrepareNavigation {
         buttons: &Input<GamepadButton>,
         binding: &HashMap<GamepadButtonType, KbgpNavCommand>,
     ) {
-        for &gamepad in gamepads.iter() {
+        for gamepad in gamepads.iter() {
             for (axis_type, action_for_negative, action_for_positive) in [
                 (
                     GamepadAxisType::LeftStickX,

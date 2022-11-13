@@ -188,7 +188,7 @@ impl KbgpPreparePendingInput {
         buttons: &Input<GamepadButton>,
     ) {
         self.accept_inputs(buttons.get_pressed().copied().map(KbgpInput::GamepadButton));
-        for &gamepad in gamepads.iter() {
+        for gamepad in gamepads.iter() {
             for axis_type in [
                 GamepadAxisType::LeftStickX,
                 GamepadAxisType::LeftStickY,

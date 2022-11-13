@@ -143,7 +143,7 @@ fn ui_system(
         }
     }
     let mut all_input_sources = vec![KbgpInputSource::KeyboardAndMouse];
-    all_input_sources.extend(gamepads.iter().copied().map(KbgpInputSource::Gamepad));
+    all_input_sources.extend(gamepads.iter().map(KbgpInputSource::Gamepad));
     while settable_inputs_of_source.len() < all_input_sources.len() {
         let source = all_input_sources[settable_inputs_of_source.len()];
         settable_inputs_of_source.push((source, vec![None; 3]));
