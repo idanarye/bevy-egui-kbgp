@@ -331,7 +331,7 @@ pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
                 common
                     .nodes
                     .iter()
-                    .find_map(|(node_id, node_data)| node_data.rect.contains(pos).then(|| *node_id))
+                    .find_map(|(node_id, node_data)| node_data.rect.contains(pos).then_some(*node_id))
             });
             if node_at_pos != state.mouse_was_last_on {
                 state.mouse_was_last_on = node_at_pos;
