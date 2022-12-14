@@ -328,10 +328,9 @@ pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
         KbgpState::PendingInput(_) => {}
         KbgpState::Navigation(state) => {
             let node_at_pos = egui_ctx.input().pointer.interact_pos().and_then(|pos| {
-                common
-                    .nodes
-                    .iter()
-                    .find_map(|(node_id, node_data)| node_data.rect.contains(pos).then_some(*node_id))
+                common.nodes.iter().find_map(|(node_id, node_data)| {
+                    node_data.rect.contains(pos).then_some(*node_id)
+                })
             });
             if node_at_pos != state.mouse_was_last_on {
                 state.mouse_was_last_on = node_at_pos;
