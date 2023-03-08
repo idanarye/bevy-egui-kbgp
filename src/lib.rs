@@ -16,7 +16,7 @@
 //! ```no_run
 //! use bevy_egui_kbgp::{egui, bevy_egui};
 //! use bevy::prelude::*;
-//! use bevy_egui::{EguiContext, EguiPlugin};
+//! use bevy_egui::{EguiContexts, EguiPlugin};
 //! use bevy_egui_kbgp::prelude::*;
 //!
 //! fn main() {
@@ -29,7 +29,7 @@
 //! }
 //!
 //! fn ui_system(
-//!     mut egui_context: ResMut<EguiContext>,
+//!     mut egui_context: EguiContexts,
 //!     keys: Res<Input<KeyCode>>,
 //! ) {
 //!     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
@@ -75,7 +75,7 @@ pub use bevy_egui::egui;
 
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
-use bevy_egui::EguiContext;
+use bevy_egui::EguiContexts;
 
 use self::navigation::KbgpNavigationState;
 use self::navigation::KbgpPrepareNavigation;
@@ -105,9 +105,10 @@ pub struct KbgpPlugin;
 impl Plugin for KbgpPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(KbgpSettings::default());
-        app.add_system_to_stage(
-            CoreStage::PreUpdate,
-            kbgp_system_default_input.after(bevy_egui::EguiSystem::BeginFrame),
+        app.add_system(
+            kbgp_system_default_input
+                .in_base_set(CoreSet::PreUpdate)
+                .after(bevy_egui::EguiSet::BeginFrame),
         );
     }
 }
@@ -190,11 +191,12 @@ struct Kbgp {
 }
 
 fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>> {
-    egui_ctx
-        .memory()
-        .data
-        .get_temp_mut_or_default::<std::sync::Arc<egui::mutex::Mutex<Kbgp>>>(egui::Id::null())
-        .clone()
+    egui_ctx.memory_mut(|memory| {
+        memory
+            .data
+            .get_temp_mut_or_default::<std::sync::Arc<egui::mutex::Mutex<Kbgp>>>(egui::Id::null())
+            .clone()
+    })
 }
 
 /// Must be called every frame, either manually or by using [`KbgpPlugin`].
@@ -213,11 +215,11 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 /// ```no_run
 /// # use bevy_egui_kbgp::bevy_egui;
 /// # use bevy::prelude::*;
-/// # use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
+/// # use bevy_egui::{EguiContexts, EguiPlugin, EguiSettings};
 /// # use bevy_egui_kbgp::prelude::*;
 /// # use bevy_egui_kbgp::KbgpPrepare;
 /// fn custom_kbgp_system(
-///     mut egui_context: ResMut<EguiContext>,
+///     mut egui_context: EguiContexts,
 ///     keys: Res<Input<KeyCode>>,
 ///     gamepads: Res<Gamepads>,
 ///     gamepad_axes: Res<Axis<GamepadAxis>>,
@@ -257,7 +259,7 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
                 prepare_dlg(KbgpPrepare::Navigation(prp))
             });
             if let Some(focus_on) = state.focus_on.take() {
-                egui_ctx.memory().request_focus(focus_on);
+                egui_ctx.memory_mut(|memory| memory.request_focus(focus_on));
             }
             state.focus_label = state.next_frame_focus_label.take();
             if common.nodes.is_empty() && state.focus_label.is_none() {
@@ -277,23 +279,27 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
 
 /// Cancel's any tab-based navigation egui did in its `BeginFrame`.
 pub fn kbgp_intercept_default_navigation(egui_ctx: &egui::Context) {
-    let mut egui_memory = egui_ctx.memory();
-    if let Some(focus) = egui_memory.focus() {
-        egui_memory.lock_focus(focus, true);
-    }
+    egui_ctx.memory_mut(|memory| {
+        if let Some(focus) = memory.focus() {
+            memory.lock_focus(focus, true);
+        }
+    });
 }
 
 /// Hide from egui Space and Enter key events.
 ///
 /// KBGP gets its keys directly from Bevy, so this function will not hide these keys from it.
 pub fn kbgp_intercept_default_activation(egui_ctx: &egui::Context) {
-    egui_ctx.input_mut().events.retain(|evt| match evt {
-        egui::Event::Key {
-            key,
-            pressed: true,
-            modifiers: _,
-        } => !matches!(key, egui::Key::Enter | egui::Key::Space),
-        _ => true,
+    egui_ctx.input_mut(|input| {
+        input.events.retain(|evt| match evt {
+            egui::Event::Key {
+                key,
+                pressed: true,
+                modifiers: _,
+                repeat: _,
+            } => !matches!(key, egui::Key::Enter | egui::Key::Space),
+            _ => true,
+        });
     });
 }
 
@@ -305,11 +311,11 @@ pub fn kbgp_prevent_loss_of_focus(egui_ctx: &egui::Context) {
     match &mut kbgp.state {
         KbgpState::PendingInput(_) => {}
         KbgpState::Navigation(state) => {
-            let current_focus = egui_ctx.memory().focus();
+            let current_focus = egui_ctx.memory(|memory| memory.focus());
             if let Some(current_focus) = current_focus {
                 state.last_focus = Some(current_focus);
             } else if let Some(last_focus) = state.last_focus.take() {
-                egui_ctx.memory().request_focus(last_focus);
+                egui_ctx.memory_mut(|memory| memory.request_focus(last_focus));
             }
         }
     }
@@ -327,15 +333,17 @@ pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
     match state {
         KbgpState::PendingInput(_) => {}
         KbgpState::Navigation(state) => {
-            let node_at_pos = egui_ctx.input().pointer.interact_pos().and_then(|pos| {
-                common.nodes.iter().find_map(|(node_id, node_data)| {
-                    node_data.rect.contains(pos).then_some(*node_id)
+            let node_at_pos = egui_ctx.input(|input| {
+                input.pointer.interact_pos().and_then(|pos| {
+                    common.nodes.iter().find_map(|(node_id, node_data)| {
+                        node_data.rect.contains(pos).then_some(*node_id)
+                    })
                 })
             });
             if node_at_pos != state.mouse_was_last_on {
                 state.mouse_was_last_on = node_at_pos;
                 if let Some(node_at_pos) = node_at_pos {
-                    egui_ctx.memory().request_focus(node_at_pos);
+                    egui_ctx.memory_mut(|memory| memory.request_focus(node_at_pos));
                 }
             }
         }
@@ -353,7 +361,7 @@ pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
 ///   * South face button (depends on model - usually X or A): widget activation.
 #[allow(clippy::too_many_arguments)]
 fn kbgp_system_default_input(
-    mut egui_context: ResMut<EguiContext>,
+    mut egui_context: EguiContexts,
     settings: Res<KbgpSettings>,
     keys: Res<Input<KeyCode>>,
     mouse_buttons: Res<Input<MouseButton>>,
@@ -543,7 +551,7 @@ pub trait KbgpEguiResponseExt: Sized {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui::{EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
@@ -560,7 +568,7 @@ pub trait KbgpEguiResponseExt: Sized {
     /// struct JumpInput(KbgpInput);
     ///
     /// fn ui_system(
-    ///     mut egui_context: ResMut<EguiContext>,
+    ///     mut egui_context: EguiContexts,
     ///     mut jump_input: ResMut<JumpInput>,
     /// ) {
     ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
@@ -591,7 +599,7 @@ pub trait KbgpEguiResponseExt: Sized {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui::{EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
@@ -608,7 +616,7 @@ pub trait KbgpEguiResponseExt: Sized {
     /// struct JumpChord(Vec<KbgpInput>);
     ///
     /// fn ui_system(
-    ///     mut egui_context: ResMut<EguiContext>,
+    ///     mut egui_context: EguiContexts,
     ///     mut jump_chord: ResMut<JumpChord>,
     /// ) {
     ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
@@ -748,7 +756,8 @@ impl KbgpEguiResponseExt for egui::Response {
                     return None;
                 }
                 self.request_focus();
-                self.ctx.memory().lock_focus(self.id, true);
+                self.ctx
+                    .memory_mut(|memory| memory.lock_focus(self.id, true));
                 let handle = KbgpInputManualHandle { state };
                 let result = dlg(self, handle);
                 if result.is_some() {
@@ -844,11 +853,11 @@ pub enum KbgpInput {
 impl core::fmt::Display for KbgpInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            KbgpInput::Keyboard(key) => write!(f, "{:?}", key)?,
+            KbgpInput::Keyboard(key) => write!(f, "{key:?}")?,
             KbgpInput::MouseButton(MouseButton::Other(button)) => {
-                write!(f, "MouseButton{:?}", button)?
+                write!(f, "MouseButton{button:?}")?
             }
-            KbgpInput::MouseButton(button) => write!(f, "Mouse{:?}", button)?,
+            KbgpInput::MouseButton(button) => write!(f, "Mouse{button:?}")?,
             KbgpInput::MouseWheelUp => write!(f, "MouseScrollUp")?,
             KbgpInput::MouseWheelDown => write!(f, "MouseScrollDown")?,
             KbgpInput::MouseWheelLeft => write!(f, "MouseScrollLeft")?,
@@ -856,15 +865,15 @@ impl core::fmt::Display for KbgpInput {
             KbgpInput::GamepadButton(GamepadButton {
                 gamepad: Gamepad { id },
                 button_type,
-            }) => write!(f, "[{}]{:?}", id, button_type)?,
+            }) => write!(f, "[{id}]{button_type:?}")?,
             KbgpInput::GamepadAxisPositive(GamepadAxis {
                 gamepad: Gamepad { id },
                 axis_type,
-            }) => write!(f, "[{}]{:?}", id, axis_type)?,
+            }) => write!(f, "[{id}]{axis_type:?}")?,
             KbgpInput::GamepadAxisNegative(GamepadAxis {
                 gamepad: Gamepad { id },
                 axis_type,
-            }) => write!(f, "[{}]-{:?}", id, axis_type)?,
+            }) => write!(f, "[{id}]-{axis_type:?}")?,
         }
         Ok(())
     }
@@ -879,7 +888,7 @@ impl KbgpInput {
             if !chord_text.is_empty() {
                 write!(&mut chord_text, " & ").unwrap();
             }
-            write!(&mut chord_text, "{}", input).unwrap();
+            write!(&mut chord_text, "{input}").unwrap();
         }
         chord_text
     }
@@ -921,7 +930,7 @@ impl core::fmt::Display for KbgpInputSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             KbgpInputSource::KeyboardAndMouse => write!(f, "Keyboard&Mouse"),
-            KbgpInputSource::Gamepad(Gamepad { id }) => write!(f, "Gamepad {}", id),
+            KbgpInputSource::Gamepad(Gamepad { id }) => write!(f, "Gamepad {id}"),
         }
     }
 }
@@ -996,22 +1005,24 @@ impl KbgpEguiUiCtxExt for egui::Context {
             }
         }
 
-        let mut input = self.input_mut();
-        input.pointer = Default::default();
-        #[allow(clippy::match_like_matches_macro)]
-        input.events.retain(|event| match event {
-            egui::Event::Key {
-                key: egui::Key::Space | egui::Key::Enter,
-                pressed: true,
-                modifiers: _,
-            } => false,
-            egui::Event::PointerButton {
-                pos: _,
-                button: egui::PointerButton::Primary,
-                pressed: true,
-                modifiers: _,
-            } => false,
-            _ => true,
+        self.input_mut(|input| {
+            input.pointer = Default::default();
+            #[allow(clippy::match_like_matches_macro)]
+            input.events.retain(|event| match event {
+                egui::Event::Key {
+                    key: egui::Key::Space | egui::Key::Enter,
+                    pressed: true,
+                    modifiers: _,
+                    repeat: _,
+                } => false,
+                egui::Event::PointerButton {
+                    pos: _,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: _,
+                } => false,
+                _ => true,
+            });
         });
     }
 

@@ -1,10 +1,11 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContext, EguiPlugin};
+use bevy_egui::{EguiContexts, EguiPlugin};
 use bevy_egui_kbgp::prelude::*;
 use bevy_egui_kbgp::{bevy_egui, egui};
 
-#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(States, Default, Hash, Debug, PartialEq, Eq, Clone, Copy)]
 enum AppState {
+    #[default]
     NoMenu,
     Menu,
 }
@@ -28,27 +29,27 @@ fn main() {
             },
             ..Default::default()
         })
-        .add_state(AppState::NoMenu)
-        .add_system_set(SystemSet::on_update(AppState::NoMenu).with_system(listen_to_menu_key))
-        .add_system_set(SystemSet::on_update(AppState::Menu).with_system(ui_system))
+        .add_state::<AppState>()
+        .add_system(listen_to_menu_key.in_set(OnUpdate(AppState::NoMenu)))
+        .add_system(ui_system.in_set(OnUpdate(AppState::Menu)))
         .run();
 }
 
-fn listen_to_menu_key(mut state: ResMut<State<AppState>>, mut egui_context: ResMut<EguiContext>) {
+fn listen_to_menu_key(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) {
     let egui_context = egui_context.ctx_mut();
     if egui_context.kbgp_user_action() == Some(KbgpActions::ToggleMenu) {
-        state.set(AppState::Menu).unwrap();
+        state.set(AppState::Menu);
         egui_context.kbgp_clear_input();
     }
 }
 
-fn ui_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<State<AppState>>) {
+fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) {
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
         ui.button("Does Nothing")
             .kbgp_navigation()
             .kbgp_initial_focus();
         if ui.kbgp_user_action() == Some(KbgpActions::ToggleMenu) {
-            state.set(AppState::NoMenu).unwrap();
+            state.set(AppState::NoMenu);
             ui.kbgp_clear_input();
         }
     });

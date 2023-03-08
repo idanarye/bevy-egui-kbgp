@@ -145,7 +145,7 @@ impl KbgpNavigationState {
         self.user_action = None;
         if handle.input != 0 {
             let mut effective_input = handle.input;
-            let current_time = egui_ctx.input().time;
+            let current_time = egui_ctx.input(|input| input.time);
             if self.prev_input != handle.input {
                 effective_input &= !self.prev_input;
                 self.next_navigation = current_time + handle.secs_after_first_input;
@@ -156,10 +156,13 @@ impl KbgpNavigationState {
             }
 
             if effective_input & INPUT_MASK_CLICK != 0 {
-                egui_ctx.input_mut().events.push(egui::Event::Key {
-                    key: egui::Key::Enter,
-                    pressed: true,
-                    modifiers: Default::default(),
+                egui_ctx.input_mut(|input| {
+                    input.events.push(egui::Event::Key {
+                        key: egui::Key::Enter,
+                        pressed: true,
+                        modifiers: Default::default(),
+                        repeat: false,
+                    });
                 });
             }
 
@@ -202,7 +205,7 @@ impl KbgpNavigationState {
             }
 
             if let Some(move_focus) = move_focus_to {
-                egui_ctx.memory().request_focus(move_focus);
+                egui_ctx.memory_mut(|memory| memory.request_focus(move_focus));
             }
         }
 
@@ -243,7 +246,7 @@ impl KbgpNavigationState {
             .nodes
             .iter()
             .map(|(id, data)| (id, transform_rect_downward(data.rect)));
-        let focused_node_id = move_from.or_else(|| egui_ctx.memory().focus());
+        let focused_node_id = move_from.or_else(|| egui_ctx.memory(|memory| memory.focus()));
         if let Some(focused_node_id) = focused_node_id {
             let focused_node_rect = if let Some(data) = common.nodes.get(&focused_node_id) {
                 transform_rect_downward(data.rect)
@@ -353,7 +356,7 @@ impl KbgpNavCommand {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContext, EguiPlugin};
+    /// use bevy_egui::{EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
@@ -380,7 +383,7 @@ impl KbgpNavCommand {
     /// }
     ///
     /// fn ui_system(
-    ///     mut egui_context: ResMut<EguiContext>,
+    ///     mut egui_context: EguiContexts,
     /// ) {
     ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
     ///         if matches!(ui.kbgp_user_action(), Some(UserAction::Exit)) {

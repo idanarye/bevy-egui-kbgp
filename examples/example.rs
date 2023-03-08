@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 use bevy::utils::HashSet;
-use bevy_egui::{EguiContext, EguiPlugin, EguiSettings};
+use bevy_egui::{EguiContexts, EguiPlugin, EguiSettings};
 use bevy_egui_kbgp::egui;
 use bevy_egui_kbgp::prelude::*;
 
-#[derive(Hash, Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(States, Default, Hash, Debug, PartialEq, Eq, Clone, Copy)]
 enum MenuState {
+    #[default]
     Main,
     Empty1,
     Empty2,
@@ -63,25 +64,29 @@ fn main() {
                     )
             },
         })
-        .add_state(MenuState::Main)
-        .add_system_set(SystemSet::on_update(MenuState::Main).with_system(ui_system))
-        .add_system_set(SystemSet::on_update(MenuState::Empty1).with_system(empty_state_system))
-        .add_system_set(SystemSet::on_update(MenuState::Empty2).with_system(empty_state_system))
+        .add_state::<MenuState>()
+        .add_system(ui_system.in_set(OnUpdate(MenuState::Main)))
+        .add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty1)))
+        .add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty2)))
         .run();
 }
 
-fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
+fn menu_controls(
+    ui: &mut egui::Ui,
+    state: &State<MenuState>,
+    next_state_setter: &mut NextState<MenuState>,
+) {
     ui.label("Navigation: arrow keys, WASD, gamepad's d-pad, gamepad's left stick.");
     ui.label("Primary action: left-click, Enter, Space, gamepad's south button.");
     ui.label("Secondary action: right-click, Delete key, gamepad's north button.");
     ui.label("Change menu: page up/down, gamepad's upper triggers, these buttons here:");
     ui.horizontal(|ui| {
-        let prev_state = match state.current() {
+        let prev_state = match state.0 {
             MenuState::Main => MenuState::Empty2,
             MenuState::Empty1 => MenuState::Main,
             MenuState::Empty2 => MenuState::Empty1,
         };
-        let next_state = match state.current() {
+        let next_state = match state.0 {
             MenuState::Main => MenuState::Empty1,
             MenuState::Empty1 => MenuState::Empty2,
             MenuState::Empty2 => MenuState::Main,
@@ -94,12 +99,12 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             .clicked()
             || ui.kbgp_user_action() == Some(MyActions::PrevMenu)
         {
-            state.set(prev_state).unwrap();
+            next_state_setter.set(prev_state);
             ui.kbgp_clear_input();
             ui.kbgp_set_focus_label(MyFocusLabel::PrevMenu);
         }
 
-        ui.label(format!("{:?}", state.current()));
+        ui.label(format!("{:?}", state.0));
 
         if ui
             .button(format!(">>{:?}>>", next_state))
@@ -109,7 +114,7 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
             .clicked()
             || ui.kbgp_user_action() == Some(MyActions::NextMenu)
         {
-            state.set(next_state).unwrap();
+            next_state_setter.set(next_state);
             ui.ctx().kbgp_clear_input();
             ui.ctx().kbgp_set_focus_label(MyFocusLabel::NextMenu);
         }
@@ -118,8 +123,9 @@ fn menu_controls(ui: &mut egui::Ui, state: &mut State<MenuState>) {
 
 #[allow(clippy::too_many_arguments)]
 fn ui_system(
-    mut egui_context: ResMut<EguiContext>,
-    mut state: ResMut<State<MenuState>>,
+    mut egui_context: EguiContexts,
+    state: Res<State<MenuState>>,
+    mut next_state: ResMut<NextState<MenuState>>,
     mut button_counters: Local<[usize; 4]>,
     mut checkbox_value: Local<bool>,
     mut label_value: Local<u8>,
@@ -153,7 +159,7 @@ fn ui_system(
         settable_chords_of_source.push((source, vec![Default::default(); 3]));
     }
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
-        menu_controls(ui, &mut state);
+        menu_controls(ui, &state, &mut next_state);
         ui.horizontal(|ui| {
             for counter in button_counters.iter_mut() {
                 match ui
@@ -311,8 +317,12 @@ fn ui_system(
     });
 }
 
-fn empty_state_system(mut egui_context: ResMut<EguiContext>, mut state: ResMut<State<MenuState>>) {
+fn empty_state_system(
+    mut egui_context: EguiContexts,
+    state: Res<State<MenuState>>,
+    mut next_state: ResMut<NextState<MenuState>>,
+) {
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
-        menu_controls(ui, &mut state);
+        menu_controls(ui, &state, &mut next_state);
     });
 }
