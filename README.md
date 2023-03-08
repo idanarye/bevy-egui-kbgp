@@ -32,6 +32,7 @@ Try it out in https://idanarye.github.io/bevy-egui-kbgp/demos/example
 
 | bevy | bevy_egui | bevy-egui-kbgp |
 |------|-----------|----------------|
+| 0.10 | 0.20      | 0.12           |
 | 0.9  | 0.19      | 0.11           |
 | 0.9  | 0.18      | 0.10           |
 | 0.9  | 0.17      | 0.9            |
