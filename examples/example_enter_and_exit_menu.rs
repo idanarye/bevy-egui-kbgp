@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, EguiPlugin};
 use bevy_egui_kbgp::prelude::*;
@@ -30,8 +32,11 @@ fn main() {
             ..Default::default()
         })
         .add_state::<AppState>()
+        .init_resource::<ClickCounters>()
         .add_system(listen_to_menu_key.in_set(OnUpdate(AppState::NoMenu)))
         .add_system(ui_system.in_set(OnUpdate(AppState::Menu)))
+        .add_system(data_display_system)
+        .add_system(data_update_system.in_set(OnUpdate(AppState::NoMenu)))
         .run();
 }
 
@@ -52,5 +57,48 @@ fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppStat
             state.set(AppState::NoMenu);
             ui.kbgp_clear_input();
         }
+        if ui.button("Exit Menu (immediately)").kbgp_navigation().clicked() {
+            state.set(AppState::NoMenu);
+            ui.kbgp_clear_input();
+        }
     });
+}
+
+#[derive(Resource, Default)]
+struct ClickCounters {
+    times_pressed: usize,
+    times_released: usize,
+    duration_pressed: Duration,
+}
+
+fn data_display_system(mut egui_context: EguiContexts, click_counters: Res<ClickCounters>) {
+    let window = egui::Window::new("Clicks Data").default_pos([0.0, 200.0]);
+    window.show(egui_context.ctx_mut(), |ui| {
+        ui.label(format!("Times Pressed: {}", click_counters.times_pressed));
+        ui.label(format!("Times Released: {}", click_counters.times_released));
+        ui.label(format!(
+            "Duration Pressed: {:.1?}",
+            click_counters.duration_pressed
+        ));
+    });
+}
+
+fn data_update_system(
+    time: Res<Time>,
+    keyboard: Res<Input<KeyCode>>,
+    mut click_counters: ResMut<ClickCounters>,
+) {
+    const KEYS: &[bevy::prelude::KeyCode] = &[KeyCode::Return, KeyCode::Space];
+
+    if KEYS.iter().any(|key| keyboard.just_pressed(*key)) {
+        click_counters.times_pressed += 1;
+    }
+
+    if KEYS.iter().any(|key| keyboard.just_released(*key)) {
+        click_counters.times_released += 1;
+    }
+
+    if KEYS.iter().any(|key| keyboard.pressed(*key)) {
+        click_counters.duration_pressed += time.delta();
+    }
 }
