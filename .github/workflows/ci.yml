@@ -153,8 +153,7 @@ jobs:
               </body>
           </html>
           EOF
-          done &&
-          cp -R assets/ target/doc/demos/
+          done
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
