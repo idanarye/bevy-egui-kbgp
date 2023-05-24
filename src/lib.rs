@@ -757,6 +757,10 @@ impl KbgpEguiResponseExt for egui::Response {
                 return *id == self.id;
             }
         }
+        // Otherwise it would not accept mouse clicks
+        if self.hovered() && self.ctx.input(|input| input.pointer.primary_released()) {
+            return true;
+        }
         false
     }
 

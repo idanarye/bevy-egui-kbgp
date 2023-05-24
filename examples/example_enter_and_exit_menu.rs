@@ -69,6 +69,9 @@ fn listen_to_menu_key(mut egui_context: EguiContexts, mut state: ResMut<NextStat
 
 fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) {
     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+        // ui.input(|input| {
+        // info!("{}", input.pointer.primary_clicked());
+        // });
         ui.button("Does Nothing")
             .kbgp_navigation()
             .kbgp_initial_focus();
