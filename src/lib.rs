@@ -387,7 +387,11 @@ fn kbgp_system_default_input(
     kbgp_prepare(egui_ctx, |prp| match prp {
         KbgpPrepare::Navigation(prp) => {
             if settings.allow_keyboard {
-                prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);
+                prp.navigate_keyboard_by_binding(
+                    &keys,
+                    &settings.bindings.keyboard,
+                    !settings.disable_default_activation,
+                );
             }
             if settings.allow_gamepads {
                 prp.navigate_gamepad_by_binding(
@@ -543,6 +547,9 @@ pub trait KbgpEguiResponseExt: Sized {
     /// }
     /// ```
     fn kbgp_activated<T: 'static + Clone>(&self) -> KbgpNavActivation<T>;
+
+    fn kbgp_click_released(&self) -> bool;
+    fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T>;
 
     /// Accept a single key/button input from this widget.
     ///
@@ -736,6 +743,40 @@ impl KbgpEguiResponseExt for egui::Response {
         } else {
             KbgpNavActivation::None
         }
+    }
+
+    fn kbgp_click_released(&self) -> bool {
+        let kbgp = kbgp_get(&self.ctx);
+        let kbgp = kbgp.lock();
+        if let KbgpState::Navigation(state) = &kbgp.state {
+            if let navigation::PendingReleaseState::NodeHoldReleased {
+                id,
+                user_action: None,
+            } = &state.pending_release_state
+            {
+                return *id == self.id;
+            }
+        }
+        false
+    }
+
+    fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T> {
+        if self.has_focus() {
+            let kbgp = kbgp_get(&self.ctx);
+            let kbgp = kbgp.lock();
+            if let KbgpState::Navigation(state) = &kbgp.state {
+                if let navigation::PendingReleaseState::NodeHoldReleased {
+                    id,
+                    user_action: Some(user_action),
+                } = &state.pending_release_state
+                {
+                    if *id == self.id {
+                        return user_action.downcast_ref().cloned();
+                    }
+                }
+            }
+        }
+        None
     }
 
     fn kbgp_pending_input_manual<T>(
@@ -978,6 +1019,8 @@ pub trait KbgpEguiUiCtxExt {
     /// }
     /// ```
     fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T>;
+
+    fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T>;
 }
 
 impl KbgpEguiUiCtxExt for egui::Ui {
@@ -991,6 +1034,10 @@ impl KbgpEguiUiCtxExt for egui::Ui {
 
     fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T> {
         self.ctx().kbgp_user_action()
+    }
+
+    fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T> {
+        self.ctx().kbgp_user_action_released()
     }
 }
 
@@ -1043,6 +1090,26 @@ impl KbgpEguiUiCtxExt for egui::Context {
         match &kbgp.state {
             KbgpState::PendingInput(_) => None,
             KbgpState::Navigation(state) => state.user_action.as_ref()?.downcast_ref().cloned(),
+        }
+    }
+
+    fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T> {
+        let kbgp = kbgp_get(self);
+        let kbgp = kbgp.lock();
+        match &kbgp.state {
+            KbgpState::PendingInput(_) => None,
+            KbgpState::Navigation(state) => match &state.pending_release_state {
+                navigation::PendingReleaseState::Idle => None,
+                navigation::PendingReleaseState::NodeHeld { .. } => None,
+                navigation::PendingReleaseState::NodeHoldReleased { id: _, user_action } => {
+                    user_action.as_ref()?.downcast_ref().cloned()
+                }
+                navigation::PendingReleaseState::GloballyHeld { .. } => None,
+                navigation::PendingReleaseState::GlobalHoldReleased { user_action } => {
+                    user_action.downcast_ref().cloned()
+                }
+                navigation::PendingReleaseState::Invalidated => None,
+            },
         }
     }
 }

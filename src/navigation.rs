@@ -17,8 +17,31 @@ const INPUT_MASK_CLICK: u8 = 16;
 const INPUT_MASK_USER_ACTION: u8 = 32;
 
 #[derive(Default)]
+pub(crate) enum PendingReleaseState {
+    #[default]
+    Idle,
+    NodeHeld {
+        id: egui::Id,
+        is_user_action: bool,
+        user_action: Option<Box<dyn Any + Send + Sync>>,
+    },
+    NodeHoldReleased {
+        id: egui::Id,
+        user_action: Option<Box<dyn Any + Send + Sync>>,
+    },
+    GloballyHeld {
+        user_action: Option<Box<dyn Any + Send + Sync>>,
+    },
+    GlobalHoldReleased {
+        user_action: Box<dyn Any + Send + Sync>,
+    },
+    Invalidated,
+}
+
+#[derive(Default)]
 pub(crate) struct KbgpNavigationState {
     pub(crate) prev_input: u8,
+    pub(crate) pending_release_state: PendingReleaseState,
     pub(crate) next_navigation: f64,
     pub(crate) user_action: Option<Box<dyn Any + Send + Sync>>,
     pub(crate) focus_label: Option<Box<dyn Any + Send + Sync>>,
@@ -75,11 +98,19 @@ impl KbgpPrepareNavigation {
         &mut self,
         keys: &Input<KeyCode>,
         binding: &HashMap<KeyCode, KbgpNavCommand>,
+        mimic_default_activation: bool,
     ) {
         for key in keys.get_pressed() {
             if let Some(action) = binding.get(key) {
                 self.apply_action(action);
             }
+        }
+        if mimic_default_activation
+            && [KeyCode::Return, KeyCode::Space]
+                .into_iter()
+                .any(|key| keys.pressed(key))
+        {
+            self.input |= INPUT_MASK_CLICK;
         }
     }
 
@@ -142,7 +173,7 @@ impl KbgpNavigationState {
         };
 
         prepare_dlg(&mut handle);
-        self.user_action = None;
+        let prev_user_action = self.user_action.take();
         if handle.input != 0 {
             let mut effective_input = handle.input;
             let current_time = egui_ctx.input(|input| input.time);
@@ -210,6 +241,108 @@ impl KbgpNavigationState {
         }
 
         self.prev_input = handle.input;
+
+        match &mut self.pending_release_state {
+            PendingReleaseState::Idle => {
+                self.pending_release_state =
+                    match handle.input & (INPUT_MASK_CLICK | INPUT_MASK_USER_ACTION) {
+                        0 => PendingReleaseState::Idle,
+                        INPUT_MASK_CLICK => {
+                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focus()) {
+                                PendingReleaseState::NodeHeld {
+                                    id: current_focus,
+                                    is_user_action: false,
+                                    user_action: prev_user_action,
+                                }
+                            } else {
+                                PendingReleaseState::Invalidated
+                            }
+                        }
+                        INPUT_MASK_USER_ACTION => {
+                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focus()) {
+                                PendingReleaseState::NodeHeld {
+                                    id: current_focus,
+                                    is_user_action: true,
+                                    user_action: prev_user_action,
+                                }
+                            } else {
+                                PendingReleaseState::GloballyHeld {
+                                    user_action: prev_user_action,
+                                }
+                            }
+                        }
+                        _ => PendingReleaseState::Invalidated,
+                    }
+            }
+            PendingReleaseState::NodeHeld {
+                id,
+                is_user_action,
+                user_action,
+            } => {
+                let current_focus = egui_ctx.memory(|memory| memory.focus());
+                match handle.input & (INPUT_MASK_CLICK | INPUT_MASK_USER_ACTION) {
+                    0 => {
+                        if current_focus == Some(*id) {
+                            self.pending_release_state = PendingReleaseState::NodeHoldReleased {
+                                id: *id,
+                                user_action: user_action.take().or(prev_user_action),
+                            };
+                        } else {
+                            self.pending_release_state = PendingReleaseState::Idle;
+                        }
+                    }
+                    INPUT_MASK_CLICK => {
+                        if *is_user_action {
+                            self.pending_release_state = PendingReleaseState::Invalidated;
+                        }
+                    }
+                    INPUT_MASK_USER_ACTION => {
+                        if !*is_user_action {
+                            self.pending_release_state = PendingReleaseState::Invalidated;
+                        } else if prev_user_action.is_some() {
+                            *user_action = prev_user_action;
+                        }
+                    }
+                    _ => {
+                        self.pending_release_state = PendingReleaseState::Invalidated;
+                    }
+                }
+            }
+            PendingReleaseState::NodeHoldReleased {
+                id: _,
+                user_action: _,
+            } => {
+                self.pending_release_state = PendingReleaseState::Idle;
+            }
+            PendingReleaseState::GloballyHeld { user_action } => {
+                match handle.input & (INPUT_MASK_CLICK | INPUT_MASK_USER_ACTION) {
+                    0 => {
+                        if let Some(user_action) = user_action.take().or(prev_user_action) {
+                            self.pending_release_state =
+                                PendingReleaseState::GlobalHoldReleased { user_action };
+                        } else {
+                            self.pending_release_state = PendingReleaseState::Idle;
+                        }
+                    }
+                    INPUT_MASK_USER_ACTION => {
+                        if prev_user_action.is_some() {
+                            *user_action = prev_user_action;
+                        }
+                    }
+                    _ => {
+                        self.pending_release_state = PendingReleaseState::Invalidated;
+                    }
+                }
+            }
+            PendingReleaseState::GlobalHoldReleased { user_action: _ } => {
+                self.pending_release_state = PendingReleaseState::Idle;
+            }
+            PendingReleaseState::Invalidated => {
+                if handle.input & INPUT_MASK_CLICK == 0 {
+                    self.pending_release_state = PendingReleaseState::Idle;
+                }
+            }
+        }
     }
 
     fn move_focus(
