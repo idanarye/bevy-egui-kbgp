@@ -26,49 +26,49 @@ enum MyFocusLabel {
 }
 
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugin(EguiPlugin)
-        .add_plugin(KbgpPlugin)
-        .insert_resource(EguiSettings { scale_factor: 1.5 })
-        .insert_resource(KbgpSettings {
-            disable_default_navigation: true,
-            disable_default_activation: true,
-            prevent_loss_of_focus: true,
-            focus_on_mouse_movement: true,
-            allow_keyboard: true,
-            allow_mouse_buttons: true,
-            allow_mouse_wheel: true,
-            allow_mouse_wheel_sideways: true,
-            allow_gamepads: true,
-            bindings: {
-                bevy_egui_kbgp::KbgpNavBindings::default()
-                    .with_wasd_navigation()
-                    .with_key(KeyCode::Space, KbgpNavCommand::Click)
-                    // Special actions - keyboard:
-                    .with_key(KeyCode::PageUp, KbgpNavCommand::user(MyActions::PrevMenu))
-                    .with_key(KeyCode::PageDown, KbgpNavCommand::user(MyActions::NextMenu))
-                    .with_key(KeyCode::Delete, KbgpNavCommand::user(MyActions::Delete))
-                    // Special actions - gamepad:
-                    .with_gamepad_button(
-                        GamepadButtonType::LeftTrigger,
-                        KbgpNavCommand::user(MyActions::PrevMenu),
-                    )
-                    .with_gamepad_button(
-                        GamepadButtonType::RightTrigger,
-                        KbgpNavCommand::user(MyActions::NextMenu),
-                    )
-                    .with_gamepad_button(
-                        GamepadButtonType::North,
-                        KbgpNavCommand::user(MyActions::Delete),
-                    )
-            },
-        })
-        .add_state::<MenuState>()
-        .add_system(ui_system.in_set(OnUpdate(MenuState::Main)))
-        .add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty1)))
-        .add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty2)))
-        .run();
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins);
+    app.add_plugin(EguiPlugin);
+    app.add_plugin(KbgpPlugin);
+    app.insert_resource(EguiSettings { scale_factor: 1.5 });
+    app.insert_resource(KbgpSettings {
+        disable_default_navigation: true,
+        disable_default_activation: true,
+        prevent_loss_of_focus: true,
+        focus_on_mouse_movement: true,
+        allow_keyboard: true,
+        allow_mouse_buttons: true,
+        allow_mouse_wheel: true,
+        allow_mouse_wheel_sideways: true,
+        allow_gamepads: true,
+        bindings: {
+            bevy_egui_kbgp::KbgpNavBindings::default()
+                .with_wasd_navigation()
+                .with_key(KeyCode::Space, KbgpNavCommand::Click)
+                // Special actions - keyboard:
+                .with_key(KeyCode::PageUp, KbgpNavCommand::user(MyActions::PrevMenu))
+                .with_key(KeyCode::PageDown, KbgpNavCommand::user(MyActions::NextMenu))
+                .with_key(KeyCode::Delete, KbgpNavCommand::user(MyActions::Delete))
+                // Special actions - gamepad:
+                .with_gamepad_button(
+                    GamepadButtonType::LeftTrigger,
+                    KbgpNavCommand::user(MyActions::PrevMenu),
+                )
+                .with_gamepad_button(
+                    GamepadButtonType::RightTrigger,
+                    KbgpNavCommand::user(MyActions::NextMenu),
+                )
+                .with_gamepad_button(
+                    GamepadButtonType::North,
+                    KbgpNavCommand::user(MyActions::Delete),
+                )
+        },
+    });
+    app.add_state::<MenuState>();
+    app.add_system(ui_system.in_set(OnUpdate(MenuState::Main)));
+    app.add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty1)));
+    app.add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty2)));
+    app.run();
 }
 
 fn menu_controls(
@@ -127,6 +127,7 @@ fn ui_system(
     state: Res<State<MenuState>>,
     mut next_state: ResMut<NextState<MenuState>>,
     mut button_counters: Local<[usize; 4]>,
+    mut counter_on_release: Local<usize>,
     mut checkbox_value: Local<bool>,
     mut label_value: Local<u8>,
     mut settable_inputs: Local<Vec<Option<KbgpInput>>>,
@@ -180,6 +181,24 @@ fn ui_system(
                 }
             }
         });
+        match ui
+            .button(format!(
+                "Counter (activates on key release): {}",
+                *counter_on_release
+            ))
+            .kbgp_navigation()
+            .kbgp_activate_released()
+        {
+            KbgpNavActivation::Clicked => {
+                *counter_on_release += 1;
+            }
+            KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete) => {
+                if 0 < *counter_on_release {
+                    *counter_on_release -= 1;
+                }
+            }
+            _ => {}
+        }
         if ui
             .checkbox(&mut checkbox_value.clone(), "Checkbox")
             .kbgp_navigation()

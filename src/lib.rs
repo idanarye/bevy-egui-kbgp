@@ -548,6 +548,8 @@ pub trait KbgpEguiResponseExt: Sized {
     /// ```
     fn kbgp_activated<T: 'static + Clone>(&self) -> KbgpNavActivation<T>;
 
+    fn kbgp_activate_released<T: 'static + Clone>(&self) -> KbgpNavActivation<T>;
+
     fn kbgp_click_released(&self) -> bool;
     fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T>;
 
@@ -739,6 +741,20 @@ impl KbgpEguiResponseExt for egui::Response {
         } else if self.middle_clicked() {
             KbgpNavActivation::ClickedMiddle
         } else if let Some(action) = self.kbgp_user_action() {
+            KbgpNavActivation::User(action)
+        } else {
+            KbgpNavActivation::None
+        }
+    }
+
+    fn kbgp_activate_released<T: 'static + Clone>(&self) -> KbgpNavActivation<T> {
+        if self.kbgp_click_released() {
+            KbgpNavActivation::Clicked
+        } else if self.secondary_clicked() {
+            KbgpNavActivation::ClickedSecondary
+        } else if self.middle_clicked() {
+            KbgpNavActivation::ClickedMiddle
+        } else if let Some(action) = self.kbgp_user_action_released() {
             KbgpNavActivation::User(action)
         } else {
             KbgpNavActivation::None

@@ -6,8 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 ### Added
-- `kbgp_click_released` and `kbgp_user_action_released` for activating clicks
-  and user actions after the button was released.
+- `kbgp_click_released`, `kbgp_user_action_released` and
+  `kbgp_activate_released` for activating clicks and user actions after the
+  button was released.
 
 ## 0.12.0 - 2023-03-08
 ### Changed
