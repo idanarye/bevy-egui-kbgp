@@ -230,7 +230,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///     kbgp_prepare(egui_context.ctx_mut(), |prp| {
 ///         match prp {
 ///             KbgpPrepare::Navigation(prp) => {
-///                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard);
+///                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard, true);
 ///                 prp.navigate_gamepad_by_binding(&gamepads, &gamepad_axes, &gamepad_buttons, &settings.bindings.gamepad_buttons);
 ///             }
 ///             KbgpPrepare::PendingInput(prp) => {
