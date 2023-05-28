@@ -94,6 +94,10 @@ impl KbgpPrepareNavigation {
     }
 
     /// Navigate the UI with the keyboard.
+    ///
+    /// Note: Unless
+    /// [`kbgp_intercept_default_activation`](crate::kbgp_intercept_default_activation) is called,
+    /// `mimic_default_activation` should be set to `true`.
     pub fn navigate_keyboard_by_binding(
         &mut self,
         keys: &Input<KeyCode>,

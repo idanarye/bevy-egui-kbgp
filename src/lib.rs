@@ -548,9 +548,15 @@ pub trait KbgpEguiResponseExt: Sized {
     /// ```
     fn kbgp_activated<T: 'static + Clone>(&self) -> KbgpNavActivation<T>;
 
+    /// Similar to [`kbgp_activated`](Self::kbgp_activated), but only returns a
+    /// non-[`KbgpNavActivation::None`] value when the key/button is released.
     fn kbgp_activate_released<T: 'static + Clone>(&self) -> KbgpNavActivation<T>;
 
+    /// Similar to egui's `clicked`, but only returns `true` when the key/button is released.
     fn kbgp_click_released(&self) -> bool;
+
+    /// Similar to [`kbgp_user_action`](Self::kbgp_user_action), but only returns `Some` when the
+    /// key/button is released.
     fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T>;
 
     /// Accept a single key/button input from this widget.
@@ -1040,6 +1046,8 @@ pub trait KbgpEguiUiCtxExt {
     /// ```
     fn kbgp_user_action<T: 'static + Clone>(&self) -> Option<T>;
 
+    /// Similar to [`kbgp_user_action`](Self::kbgp_user_action), but only returns `Some` when the
+    /// key/button is released.
     fn kbgp_user_action_released<T: 'static + Clone>(&self) -> Option<T>;
 }
 
