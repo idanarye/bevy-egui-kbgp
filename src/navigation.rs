@@ -35,7 +35,11 @@ pub(crate) enum PendingReleaseState {
     GlobalHoldReleased {
         user_action: Box<dyn Any + Send + Sync>,
     },
-    Invalidated,
+    Invalidated {
+        // `kbgp_clear_input` sets this to `true`, so that the invalidation could survive the
+        // clearing.
+        cooldown_frame: bool,
+    },
 }
 
 #[derive(Default)]
@@ -259,7 +263,9 @@ impl KbgpNavigationState {
                                     user_action: prev_user_action,
                                 }
                             } else {
-                                PendingReleaseState::Invalidated
+                                PendingReleaseState::Invalidated {
+                                    cooldown_frame: false,
+                                }
                             }
                         }
                         INPUT_MASK_USER_ACTION => {
@@ -275,7 +281,9 @@ impl KbgpNavigationState {
                                 }
                             }
                         }
-                        _ => PendingReleaseState::Invalidated,
+                        _ => PendingReleaseState::Invalidated {
+                            cooldown_frame: false,
+                        },
                     }
             }
             PendingReleaseState::NodeHeld {
@@ -297,18 +305,24 @@ impl KbgpNavigationState {
                     }
                     INPUT_MASK_CLICK => {
                         if *is_user_action {
-                            self.pending_release_state = PendingReleaseState::Invalidated;
+                            self.pending_release_state = PendingReleaseState::Invalidated {
+                                cooldown_frame: false,
+                            };
                         }
                     }
                     INPUT_MASK_USER_ACTION => {
                         if !*is_user_action {
-                            self.pending_release_state = PendingReleaseState::Invalidated;
+                            self.pending_release_state = PendingReleaseState::Invalidated {
+                                cooldown_frame: false,
+                            };
                         } else if prev_user_action.is_some() {
                             *user_action = prev_user_action;
                         }
                     }
                     _ => {
-                        self.pending_release_state = PendingReleaseState::Invalidated;
+                        self.pending_release_state = PendingReleaseState::Invalidated {
+                            cooldown_frame: false,
+                        };
                     }
                 }
             }
@@ -334,15 +348,19 @@ impl KbgpNavigationState {
                         }
                     }
                     _ => {
-                        self.pending_release_state = PendingReleaseState::Invalidated;
+                        self.pending_release_state = PendingReleaseState::Invalidated {
+                            cooldown_frame: false,
+                        };
                     }
                 }
             }
             PendingReleaseState::GlobalHoldReleased { user_action: _ } => {
                 self.pending_release_state = PendingReleaseState::Idle;
             }
-            PendingReleaseState::Invalidated => {
-                if handle.input & INPUT_MASK_CLICK == 0 {
+            PendingReleaseState::Invalidated { cooldown_frame } => {
+                if *cooldown_frame {
+                    *cooldown_frame = false;
+                } else if handle.input & INPUT_MASK_CLICK == 0 {
                     self.pending_release_state = PendingReleaseState::Idle;
                 }
             }

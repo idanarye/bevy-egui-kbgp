@@ -77,9 +77,9 @@ use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 use bevy_egui::EguiContexts;
 
-use self::navigation::KbgpNavigationState;
 use self::navigation::KbgpPrepareNavigation;
 pub use self::navigation::{KbgpNavActivation, KbgpNavBindings, KbgpNavCommand};
+use self::navigation::{KbgpNavigationState, PendingReleaseState};
 use self::pending_input::KbgpPendingInputState;
 pub use self::pending_input::{KbgpInputManualHandle, KbgpPreparePendingInput};
 
@@ -1077,6 +1077,9 @@ impl KbgpEguiUiCtxExt for egui::Context {
             KbgpState::PendingInput(_) => {}
             KbgpState::Navigation(state) => {
                 state.user_action = None;
+                state.pending_release_state = PendingReleaseState::Invalidated {
+                    cooldown_frame: true,
+                };
             }
         }
 
@@ -1136,7 +1139,7 @@ impl KbgpEguiUiCtxExt for egui::Context {
                 navigation::PendingReleaseState::GlobalHoldReleased { user_action } => {
                     user_action.downcast_ref().cloned()
                 }
-                navigation::PendingReleaseState::Invalidated => None,
+                navigation::PendingReleaseState::Invalidated { .. } => None,
             },
         }
     }

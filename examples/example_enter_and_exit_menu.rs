@@ -16,6 +16,7 @@ enum AppState {
 enum KbgpActions {
     ToggleMenu,
     ToggleMenuQ,
+    ToggleMenuP,
     ActionZ,
 }
 
@@ -32,6 +33,7 @@ fn main() {
                     KbgpNavCommand::user(KbgpActions::ToggleMenu),
                 )
                 .with_key(KeyCode::Q, KbgpNavCommand::user(KbgpActions::ToggleMenuQ))
+                .with_key(KeyCode::P, KbgpNavCommand::user(KbgpActions::ToggleMenuP))
                 .with_key(KeyCode::Z, KbgpNavCommand::user(KbgpActions::ActionZ))
         },
         ..Default::default()
@@ -65,6 +67,10 @@ fn listen_to_menu_key(mut egui_context: EguiContexts, mut state: ResMut<NextStat
     if egui_context.kbgp_user_action_released() == Some(KbgpActions::ToggleMenuQ) {
         state.set(AppState::Menu);
     }
+    if egui_context.kbgp_user_action() == Some(KbgpActions::ToggleMenuP) {
+        state.set(AppState::Menu);
+        egui_context.kbgp_clear_input();
+    }
 }
 
 fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) {
@@ -79,7 +85,10 @@ fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppStat
             state.set(AppState::NoMenu);
             ui.kbgp_clear_input();
         }
-        if ui.kbgp_user_action_released() == Some(KbgpActions::ToggleMenuQ) {
+        if matches!(
+            ui.kbgp_user_action_released(),
+            Some(KbgpActions::ToggleMenuQ | KbgpActions::ToggleMenuP)
+        ) {
             state.set(AppState::NoMenu);
         }
         if ui
