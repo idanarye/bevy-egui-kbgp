@@ -12,6 +12,10 @@
 //! * To set special actions, see [the example here](crate::KbgpNavCommand::user). To avoid having
 //!   to deal with both Bevy's input methods and KBGP's input, it's better to use these actions for
 //!   entering the pause menu from within the game.
+//! * Use [`kbgp_click_released`](KbgpEguiResponseExt::kbgp_click_released) instead of egui's
+//!   `clicked` to register the button presss only when the user releases the key/button. This is
+//!   useful for exiting menus, to avoid having the same key/button that was used to exit the menu
+//!   registered as actual game input.
 //!
 //! ```no_run
 //! use bevy_egui_kbgp::{egui, bevy_egui};

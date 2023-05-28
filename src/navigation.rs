@@ -495,6 +495,10 @@ pub enum KbgpNavCommand {
     /// [`kbgp_user_action`](crate::KbgpEguiResponseExt::kbgp_user_action) or
     /// [`kbgp_activated`](crate::KbgpEguiResponseExt::kbgp_activated) on the widget and
     /// [`kbgp_user_action`](crate::KbgpEguiUiCtxExt::kbgp_user_action) on the UI handle.
+    ///
+    /// Each of these methods has a `_released` variation, that only "fires" after the key/button
+    /// is released. This is useful for exiting menus, to avoid having the same key/button that was
+    /// used to exit the menu registered as actual game input.
     User(Box<dyn 'static + Send + Sync + Fn() -> Box<dyn Any + Send + Sync>>),
 }
 
@@ -508,6 +512,10 @@ impl KbgpNavCommand {
     /// [`kbgp_activated`](crate::KbgpEguiResponseExt::kbgp_activated) or the
     /// [`kbgp_user_action`](crate::KbgpEguiUiCtxExt::kbgp_user_action) on the UI handle can be
     /// used to determine if the player activated this action.
+    ///
+    /// Each of these methods has a `_released` variation, that only "fires" after the key/button
+    /// is released. This is useful for exiting menus, to avoid having the same key/button that was
+    /// used to exit the menu registered as actual game input.
     ///
     /// ```no_run
     /// use bevy::prelude::*;
