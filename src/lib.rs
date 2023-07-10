@@ -109,10 +109,9 @@ pub struct KbgpPlugin;
 impl Plugin for KbgpPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(KbgpSettings::default());
-        app.add_system(
-            kbgp_system_default_input
-                .in_base_set(CoreSet::PreUpdate)
-                .after(bevy_egui::EguiSet::BeginFrame),
+        app.add_systems(
+            PreUpdate,
+            kbgp_system_default_input .after(bevy_egui::EguiSet::BeginFrame),
         );
     }
 }

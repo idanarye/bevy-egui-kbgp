@@ -23,8 +23,8 @@ enum KbgpActions {
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugin(EguiPlugin);
-    app.add_plugin(KbgpPlugin);
+    app.add_plugins(EguiPlugin);
+    app.add_plugins(KbgpPlugin);
     app.insert_resource(KbgpSettings {
         bindings: {
             bevy_egui_kbgp::KbgpNavBindings::default()
@@ -51,10 +51,10 @@ fn main() {
         .map(|key_code| (key_code, Default::default()))
         .collect(),
     ));
-    app.add_system(listen_to_menu_key.in_set(OnUpdate(AppState::NoMenu)));
-    app.add_system(ui_system.in_set(OnUpdate(AppState::Menu)));
-    app.add_system(data_display_system);
-    app.add_system(data_update_system.in_set(OnUpdate(AppState::NoMenu)));
+    app.add_systems(Update, listen_to_menu_key.run_if(in_state(AppState::NoMenu)));
+    app.add_systems(Update, ui_system.run_if(in_state(AppState::Menu)));
+    app.add_systems(Update, data_display_system);
+    app.add_systems(Update, data_update_system.run_if(in_state(AppState::NoMenu)));
     app.run();
 }
 

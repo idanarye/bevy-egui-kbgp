@@ -28,9 +28,12 @@ enum MyFocusLabel {
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugin(EguiPlugin);
-    app.add_plugin(KbgpPlugin);
-    app.insert_resource(EguiSettings { scale_factor: 1.5 });
+    app.add_plugins(EguiPlugin);
+    app.add_plugins(KbgpPlugin);
+    app.insert_resource(EguiSettings {
+        scale_factor: 1.5,
+        ..Default::default()
+    });
     app.insert_resource(KbgpSettings {
         disable_default_navigation: true,
         disable_default_activation: true,
@@ -65,9 +68,9 @@ fn main() {
         },
     });
     app.add_state::<MenuState>();
-    app.add_system(ui_system.in_set(OnUpdate(MenuState::Main)));
-    app.add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty1)));
-    app.add_system(empty_state_system.in_set(OnUpdate(MenuState::Empty2)));
+    app.add_systems(Update, ui_system.run_if(in_state(MenuState::Main)));
+    app.add_systems(Update, empty_state_system.run_if(in_state(MenuState::Empty1)));
+    app.add_systems(Update, empty_state_system.run_if(in_state(MenuState::Empty2)));
     app.run();
 }
 
@@ -81,12 +84,12 @@ fn menu_controls(
     ui.label("Secondary action: right-click, Delete key, gamepad's north button.");
     ui.label("Change menu: page up/down, gamepad's upper triggers, these buttons here:");
     ui.horizontal(|ui| {
-        let prev_state = match state.0 {
+        let prev_state = match state.get() {
             MenuState::Main => MenuState::Empty2,
             MenuState::Empty1 => MenuState::Main,
             MenuState::Empty2 => MenuState::Empty1,
         };
-        let next_state = match state.0 {
+        let next_state = match state.get() {
             MenuState::Main => MenuState::Empty1,
             MenuState::Empty1 => MenuState::Empty2,
             MenuState::Empty2 => MenuState::Main,
@@ -104,7 +107,7 @@ fn menu_controls(
             ui.kbgp_set_focus_label(MyFocusLabel::PrevMenu);
         }
 
-        ui.label(format!("{:?}", state.0));
+        ui.label(format!("{:?}", state.get()));
 
         if ui
             .button(format!(">>{:?}>>", next_state))

@@ -114,7 +114,7 @@ impl KbgpPendingInputState {
             self.input_this_frame = handle
                 .current_input
                 .iter()
-                .filter(|inp| !ignored_input.contains(inp))
+                .filter(|inp| !ignored_input.contains(*inp))
                 .cloned()
                 .collect();
         } else {
