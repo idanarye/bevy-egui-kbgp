@@ -51,10 +51,16 @@ fn main() {
         .map(|key_code| (key_code, Default::default()))
         .collect(),
     ));
-    app.add_systems(Update, listen_to_menu_key.run_if(in_state(AppState::NoMenu)));
+    app.add_systems(
+        Update,
+        listen_to_menu_key.run_if(in_state(AppState::NoMenu)),
+    );
     app.add_systems(Update, ui_system.run_if(in_state(AppState::Menu)));
     app.add_systems(Update, data_display_system);
-    app.add_systems(Update, data_update_system.run_if(in_state(AppState::NoMenu)));
+    app.add_systems(
+        Update,
+        data_update_system.run_if(in_state(AppState::NoMenu)),
+    );
     app.run();
 }
 

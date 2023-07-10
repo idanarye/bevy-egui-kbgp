@@ -69,8 +69,14 @@ fn main() {
     });
     app.add_state::<MenuState>();
     app.add_systems(Update, ui_system.run_if(in_state(MenuState::Main)));
-    app.add_systems(Update, empty_state_system.run_if(in_state(MenuState::Empty1)));
-    app.add_systems(Update, empty_state_system.run_if(in_state(MenuState::Empty2)));
+    app.add_systems(
+        Update,
+        empty_state_system.run_if(in_state(MenuState::Empty1)),
+    );
+    app.add_systems(
+        Update,
+        empty_state_system.run_if(in_state(MenuState::Empty2)),
+    );
     app.run();
 }
 

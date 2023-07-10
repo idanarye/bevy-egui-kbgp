@@ -111,7 +111,7 @@ impl Plugin for KbgpPlugin {
         app.insert_resource(KbgpSettings::default());
         app.add_systems(
             PreUpdate,
-            kbgp_system_default_input .after(bevy_egui::EguiSet::BeginFrame),
+            kbgp_system_default_input.after(bevy_egui::EguiSet::BeginFrame),
         );
     }
 }
