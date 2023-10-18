@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ## [Unreleased]
 
 ### Changed
-- Update bevy_egui version to 0.22.
+- [**BREAKING**] Update bevy_egui version to 0.22.
+
+  This is a breaking change because starting from this version (more accurately
+  version 0.23 of egui) egui will process the arrow keys and use them for
+  navigation. This means that unless the default navigation is disabled using
+  `KbgpSettings::disable_default_navigation`, using `KbgpNavBindings::default`
+  will process the arrow keys twice. `KbgpNavBindings::default_gamepad_only`
+  should be used instead.
 
 ## 0.14.0 - 2023-04-11
 ### Changed

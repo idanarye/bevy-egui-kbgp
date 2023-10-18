@@ -27,7 +27,7 @@ fn main() {
     app.add_plugins(KbgpPlugin);
     app.insert_resource(KbgpSettings {
         bindings: {
-            bevy_egui_kbgp::KbgpNavBindings::default()
+            bevy_egui_kbgp::KbgpNavBindings::default_gamepad_only()
                 .with_key(
                     KeyCode::Escape,
                     KbgpNavCommand::user(KbgpActions::ToggleMenu),

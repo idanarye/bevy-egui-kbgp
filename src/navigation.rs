@@ -607,6 +607,18 @@ impl KbgpNavBindings {
         }
     }
 
+    /// Create bindings with the default mappings for gamepad.
+    ///
+    /// * Navigation: d-pad, left stick.
+    /// * Activateion: gamepad south button.
+    ///
+    /// Use this instead of [`default`](Self::default) when
+    /// [`disable_default_navigation`](crate::KbgpSettings::disable_default_navigation) is not set,
+    /// otherwise both egui and KBGP will process the arrow keys, resulting in double-movement.
+    pub fn default_gamepad_only() -> Self {
+        Self::empty().with_gamepad_dpad_navigation_and_south_button_activation()
+    }
+
     /// Bind the arrow keys for navigation.
     ///
     /// [`KbgpNavBindings::default`] already contains these mappings.
