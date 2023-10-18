@@ -5,9 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
+- Update bevy_egui version to 0.22.
+
 ## 0.14.0 - 2023-04-11
 ### Changed
-- Upgrade Bevy to 0.11.
+- Update Bevy version to 0.11.
 
 ## 0.13.0 - 2023-05-28
 ### Added
@@ -17,36 +21,36 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 0.12.0 - 2023-03-08
 ### Changed
-- Update Bevy version to 0.10 and bevy-egui version to 0.20.
+- Update Bevy version to 0.10 and bevy_egui version to 0.20.
 
 ## 0.11.0 - 2023-02-01
 ### Changed
-- Update bevy-egui version to 0.19 which updates the `arboard` dependency and fixes
+- Update bevy_egui version to 0.19 which updates the `arboard` dependency and fixes
   panics on some devices due to missing swapchain textures.
 
 ## 0.10.0 - 2022-12-14
 ### Changed
-- Update bevy-egui version to 0.18 which means egui version gets updated to 0.20.
+- Update bevy_egui version to 0.18 which means egui version gets updated to 0.20.
 
 ## 0.9.0 - 2022-11-13
 ### Changed
-- Update Bevy version to 0.9 and bevy-egui version to 0.17.
+- Update Bevy version to 0.9 and bevy_egui version to 0.17.
 
 ## 0.8.0 - 2022-10-05
 ### Changed
-- Update bevy-egui version to 0.16 which means egui version gets updated to 0.19.
+- Update bevy_egui version to 0.16 which means egui version gets updated to 0.19.
 
 ## 0.7.0 - 2022-08-01
 ### Changed
-- Update Bevy version to 0.8 and bevy-egui version to 0.15.
+- Update Bevy version to 0.8 and bevy_egui version to 0.15.
 
 ## 0.6.0 - 2022-05-03
 ### Changed
-- Update bevy-egui version to 0.14 which means egui version gets updated to 0.18.
+- Update bevy_egui version to 0.14 which means egui version gets updated to 0.18.
 
 ## 0.5.0 - 2022-04-17
 ### Changed
-- Update Bevy version to 0.7 and bevy-egui version to 0.13.
+- Update Bevy version to 0.7 and bevy_egui version to 0.13.
 
 ## 0.4.0 - 2022-04-13
 ### Fixed

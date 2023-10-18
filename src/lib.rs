@@ -284,7 +284,14 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
 pub fn kbgp_intercept_default_navigation(egui_ctx: &egui::Context) {
     egui_ctx.memory_mut(|memory| {
         if let Some(focus) = memory.focus() {
-            memory.lock_focus(focus, true);
+            memory.set_focus_lock_filter(
+                focus,
+                egui::EventFilter {
+                    tab: true,
+                    arrows: true,
+                    escape: true,
+                },
+            );
         }
     });
 }
@@ -826,8 +833,16 @@ impl KbgpEguiResponseExt for egui::Response {
                     return None;
                 }
                 self.request_focus();
-                self.ctx
-                    .memory_mut(|memory| memory.lock_focus(self.id, true));
+                self.ctx.memory_mut(|memory| {
+                    memory.set_focus_lock_filter(
+                        self.id,
+                        egui::EventFilter {
+                            tab: true,
+                            arrows: true,
+                            escape: true,
+                        },
+                    )
+                });
                 let handle = KbgpInputManualHandle { state };
                 let result = dlg(self, handle);
                 if result.is_some() {
