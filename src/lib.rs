@@ -1,7 +1,7 @@
 //! Improve the keyboard and gamepads usage for egui in Bevy.
 //!
 //! Usage:
-//! * Add [`KbgpPlugin`](crate::KbgpPlugin).
+//! * Add [`KbgpPlugin`].
 //! * Use [the extension methods](crate::KbgpEguiResponseExt) on the egui widgets to add KBGP's
 //!   functionality.
 //! * Call [`ui.kbgp_clear_input`](crate::KbgpEguiUiCtxExt::kbgp_clear_input) when triggering a
@@ -26,9 +26,9 @@
 //! fn main() {
 //!     App::new()
 //!         .add_plugins(DefaultPlugins)
-//!         .add_plugin(EguiPlugin)
-//!         .add_plugin(KbgpPlugin)
-//!         .add_system(ui_system)
+//!         .add_plugins(EguiPlugin)
+//!         .add_plugins(KbgpPlugin)
+//!         .add_systems(Update, ui_system)
 //!         .run();
 //! }
 //!
@@ -103,7 +103,7 @@ pub mod prelude {
     pub use crate::KbgpSettings;
 }
 
-/// Adds KBGP input handling system and [`KbgpSettings`](crate::KbgpSettings).
+/// Adds KBGP input handling system and [`KbgpSettings`].
 pub struct KbgpPlugin;
 
 impl Plugin for KbgpPlugin {
@@ -118,9 +118,9 @@ impl Plugin for KbgpPlugin {
 
 /// General configuration resource for KBGP.
 ///
-/// Note: [`KbgpPlugin`](crate::KbgpPlugin) will add the default settings, so custom settings
-/// should either be added after the plugin or modified with a system. The default is to enable
-/// everything except the mouse wheel.
+/// Note: [`KbgpPlugin`] will add the default settings, so custom settings should either be added
+/// after the plugin or modified with a system. The default is to enable everything except the
+/// mouse wheel.
 #[derive(Resource)]
 pub struct KbgpSettings {
     /// Whether or not egui's tab navigation should work
@@ -207,8 +207,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 /// Should be called between bevy_egui's input handling system and the system that generates the
 /// UI - so in the `CoreStage::PreUpdate` stage after the `EguiSystem::ProcessInput` label.
 ///
-/// The `prepare_dlg` argument is a closure that accepts a [`KbgpPrepare`](crate::KbgpPrepare), and
-/// used to:
+/// The `prepare_dlg` argument is a closure that accepts a [`KbgpPrepare`], and used to:
 ///
 /// * Register the input from the keyboard and the gamepads.
 /// * Set preferences.
@@ -582,9 +581,9 @@ pub trait KbgpEguiResponseExt: Sized {
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugin(EguiPlugin)
-    ///         .add_plugin(KbgpPlugin)
-    ///         .add_system(ui_system)
+    ///         .add_plugins(EguiPlugin)
+    ///         .add_plugins(KbgpPlugin)
+    ///         .add_systems(Update, ui_system)
     ///         .insert_resource(JumpInput(KbgpInput::Keyboard(KeyCode::Space)))
     ///         .run();
     /// }
@@ -630,9 +629,9 @@ pub trait KbgpEguiResponseExt: Sized {
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugin(EguiPlugin)
-    ///         .add_plugin(KbgpPlugin)
-    ///         .add_system(ui_system)
+    ///         .add_plugins(EguiPlugin)
+    ///         .add_plugins(KbgpPlugin)
+    ///         .add_systems(Update, ui_system)
     ///         .insert_resource(JumpChord(vec![KbgpInput::Keyboard(KeyCode::Space)]))
     ///         .run();
     /// }

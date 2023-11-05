@@ -525,9 +525,9 @@ impl KbgpNavCommand {
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugin(EguiPlugin)
-    ///         .add_plugin(KbgpPlugin)
-    ///         .add_system(ui_system)
+    ///         .add_plugins(EguiPlugin)
+    ///         .add_plugins(KbgpPlugin)
+    ///         .add_systems(Update, ui_system)
     ///         .insert_resource(KbgpSettings {
     ///             bindings: bevy_egui_kbgp::KbgpNavBindings::default()
     ///                 .with_key(KeyCode::Escape, KbgpNavCommand::user(UserAction::Exit))
