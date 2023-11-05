@@ -420,7 +420,7 @@ fn kbgp_system_default_input(
                 prp.accept_mouse_buttons_input(&mouse_buttons);
             }
             if settings.allow_mouse_wheel || settings.allow_mouse_wheel_sideways {
-                for event in mouse_wheel_events.iter() {
+                for event in mouse_wheel_events.read() {
                     prp.accept_mouse_wheel_event(
                         event,
                         settings.allow_mouse_wheel,
