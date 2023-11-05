@@ -289,7 +289,7 @@ dependencies = [
 
 [[package]]
 name = "bevy-egui-kbgp"
-version = "0.15.0"
+version = "0.16.0"
 dependencies = [
  "bevy",
  "bevy_egui",
