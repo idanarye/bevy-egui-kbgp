@@ -34,7 +34,7 @@
 //!
 //! fn ui_system(
 //!     mut egui_context: EguiContexts,
-//!     keys: Res<Input<KeyCode>>,
+//!     keys: Res<ButtonInput<KeyCode>>,
 //! ) {
 //!     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
 //!         if ui
@@ -137,7 +137,8 @@ pub struct KbgpSettings {
     ///         disable_default_activation: true,
     ///         bindings: KbgpNavBindings::default()
     ///             .with_key(KeyCode::Space, KbgpNavCommand::Click)
-    ///             .with_key(KeyCode::Return, KbgpNavCommand::Click),
+    ///             .with_key(KeyCode::NumpadEnter, KbgpNavCommand::Click)
+    ///             .with_key(KeyCode::Enter, KbgpNavCommand::Click),
     ///         ..Default::default()
     ///     })
     ///     // ...
@@ -222,11 +223,11 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 /// # use bevy_egui_kbgp::KbgpPrepare;
 /// fn custom_kbgp_system(
 ///     mut egui_context: EguiContexts,
-///     keys: Res<Input<KeyCode>>,
+///     keys: Res<ButtonInput<KeyCode>>,
 ///     gamepads: Res<Gamepads>,
 ///     gamepad_axes: Res<Axis<GamepadAxis>>,
-///     gamepad_buttons: Res<Input<GamepadButton>>,
-///     mouse_buttons: Res<Input<MouseButton>>,
+///     gamepad_buttons: Res<ButtonInput<GamepadButton>>,
+///     mouse_buttons: Res<ButtonInput<MouseButton>>,
 ///     settings: Res<KbgpSettings>,
 /// ) {
 ///     kbgp_prepare(egui_context.ctx_mut(), |prp| {

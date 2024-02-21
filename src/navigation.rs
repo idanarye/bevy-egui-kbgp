@@ -532,8 +532,8 @@ impl KbgpNavCommand {
     ///         .insert_resource(KbgpSettings {
     ///             bindings: bevy_egui_kbgp::KbgpNavBindings::default()
     ///                 .with_key(KeyCode::Escape, KbgpNavCommand::user(UserAction::Exit))
-    ///                 .with_key(KeyCode::Z, KbgpNavCommand::user(UserAction::Special1))
-    ///                 .with_key(KeyCode::X, KbgpNavCommand::user(UserAction::Special2)),
+    ///                 .with_key(KeyCode::KeyZ, KbgpNavCommand::user(UserAction::Special1))
+    ///                 .with_key(KeyCode::KeyX, KbgpNavCommand::user(UserAction::Special2)),
     ///             ..Default::default()
     ///         })
     ///         .run();
