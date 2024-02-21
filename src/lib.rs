@@ -197,7 +197,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
     egui_ctx.memory_mut(|memory| {
         memory
             .data
-            .get_temp_mut_or_default::<std::sync::Arc<egui::mutex::Mutex<Kbgp>>>(egui::Id::null())
+            .get_temp_mut_or_default::<std::sync::Arc<egui::mutex::Mutex<Kbgp>>>(egui::Id::NULL)
             .clone()
     })
 }
@@ -287,7 +287,8 @@ pub fn kbgp_intercept_default_navigation(egui_ctx: &egui::Context) {
                 focus,
                 egui::EventFilter {
                     tab: true,
-                    arrows: true,
+                    horizontal_arrows: true,
+                    vertical_arrows: true,
                     escape: true,
                 },
             );
@@ -303,6 +304,7 @@ pub fn kbgp_intercept_default_activation(egui_ctx: &egui::Context) {
         input.events.retain(|evt| match evt {
             egui::Event::Key {
                 key,
+                physical_key: None,
                 pressed: true,
                 modifiers: _,
                 repeat: _,
@@ -372,12 +374,12 @@ pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
 fn kbgp_system_default_input(
     mut egui_context: EguiContexts,
     settings: Res<KbgpSettings>,
-    keys: Res<Input<KeyCode>>,
-    mouse_buttons: Res<Input<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut mouse_wheel_events: EventReader<bevy::input::mouse::MouseWheel>,
     gamepads: Res<Gamepads>,
     gamepad_axes: Res<Axis<GamepadAxis>>,
-    gamepad_buttons: Res<Input<GamepadButton>>,
+    gamepad_buttons: Res<ButtonInput<GamepadButton>>,
 ) {
     let egui_ctx = egui_context.ctx_mut();
     if settings.disable_default_navigation {
@@ -837,7 +839,8 @@ impl KbgpEguiResponseExt for egui::Response {
                         self.id,
                         egui::EventFilter {
                             tab: true,
-                            arrows: true,
+                            horizontal_arrows: true,
+                            vertical_arrows: true,
                             escape: true,
                         },
                     )
@@ -1106,6 +1109,7 @@ impl KbgpEguiUiCtxExt for egui::Context {
             input.events.retain(|event| match event {
                 egui::Event::Key {
                     key: egui::Key::Space | egui::Key::Enter,
+                    physical_key: _,
                     pressed: true,
                     modifiers: _,
                     repeat: _,

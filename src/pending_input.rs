@@ -73,7 +73,7 @@ impl<'a> KbgpInputManualHandle<'a> {
     pub fn show_current_chord(&self, response: &egui::Response) {
         egui::containers::popup::show_tooltip_for(
             &response.ctx,
-            egui::Id::null(),
+            egui::Id::NULL,
             &response.rect,
             |ui| {
                 ui.label(&self.format_current_chord());
@@ -148,12 +148,12 @@ impl KbgpPreparePendingInput {
     }
 
     /// Notify KBGP about all the input from the keyboard.
-    pub fn accept_keyboard_input(&mut self, keys: &Input<KeyCode>) {
+    pub fn accept_keyboard_input(&mut self, keys: &ButtonInput<KeyCode>) {
         self.accept_inputs(keys.get_pressed().copied().map(KbgpInput::Keyboard));
     }
 
     /// Notify KBGP about all the input from mouse buttons.
-    pub fn accept_mouse_buttons_input(&mut self, buttons: &Input<MouseButton>) {
+    pub fn accept_mouse_buttons_input(&mut self, buttons: &ButtonInput<MouseButton>) {
         self.accept_inputs(buttons.get_pressed().copied().map(KbgpInput::MouseButton));
     }
 
@@ -185,7 +185,7 @@ impl KbgpPreparePendingInput {
         &mut self,
         gamepads: &Gamepads,
         axes: &Axis<GamepadAxis>,
-        buttons: &Input<GamepadButton>,
+        buttons: &ButtonInput<GamepadButton>,
     ) {
         self.accept_inputs(buttons.get_pressed().copied().map(KbgpInput::GamepadButton));
         for gamepad in gamepads.iter() {

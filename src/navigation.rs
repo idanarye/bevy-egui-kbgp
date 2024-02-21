@@ -104,7 +104,7 @@ impl KbgpPrepareNavigation {
     /// `mimic_default_activation` should be set to `true`.
     pub fn navigate_keyboard_by_binding(
         &mut self,
-        keys: &Input<KeyCode>,
+        keys: &ButtonInput<KeyCode>,
         binding: &HashMap<KeyCode, KbgpNavCommand>,
         mimic_default_activation: bool,
     ) {
@@ -114,7 +114,7 @@ impl KbgpPrepareNavigation {
             }
         }
         if mimic_default_activation
-            && [KeyCode::Return, KeyCode::Space]
+            && [KeyCode::Enter, KeyCode::NumpadEnter, KeyCode::Space]
                 .into_iter()
                 .any(|key| keys.pressed(key))
         {
@@ -129,7 +129,7 @@ impl KbgpPrepareNavigation {
         &mut self,
         gamepads: &Gamepads,
         axes: &Axis<GamepadAxis>,
-        buttons: &Input<GamepadButton>,
+        buttons: &ButtonInput<GamepadButton>,
         binding: &HashMap<GamepadButtonType, KbgpNavCommand>,
     ) {
         for gamepad in gamepads.iter() {
@@ -198,6 +198,7 @@ impl KbgpNavigationState {
                 egui_ctx.input_mut(|input| {
                     input.events.push(egui::Event::Key {
                         key: egui::Key::Enter,
+                        physical_key: None,
                         pressed: true,
                         modifiers: Default::default(),
                         repeat: false,
@@ -623,10 +624,10 @@ impl KbgpNavBindings {
     ///
     /// [`KbgpNavBindings::default`] already contains these mappings.
     pub fn bind_arrow_keys_navigation(&mut self) {
-        self.bind_key(KeyCode::Up, KbgpNavCommand::NavigateUp);
-        self.bind_key(KeyCode::Down, KbgpNavCommand::NavigateDown);
-        self.bind_key(KeyCode::Left, KbgpNavCommand::NavigateLeft);
-        self.bind_key(KeyCode::Right, KbgpNavCommand::NavigateRight);
+        self.bind_key(KeyCode::ArrowUp, KbgpNavCommand::NavigateUp);
+        self.bind_key(KeyCode::ArrowDown, KbgpNavCommand::NavigateDown);
+        self.bind_key(KeyCode::ArrowLeft, KbgpNavCommand::NavigateLeft);
+        self.bind_key(KeyCode::ArrowRight, KbgpNavCommand::NavigateRight);
     }
 
     /// Bind the arrow keys for navigation.
@@ -658,10 +659,10 @@ impl KbgpNavBindings {
 
     /// Bind WASD for navigation.
     pub fn bind_wasd_navigation(&mut self) {
-        self.bind_key(KeyCode::W, KbgpNavCommand::NavigateUp);
-        self.bind_key(KeyCode::S, KbgpNavCommand::NavigateDown);
-        self.bind_key(KeyCode::A, KbgpNavCommand::NavigateLeft);
-        self.bind_key(KeyCode::D, KbgpNavCommand::NavigateRight);
+        self.bind_key(KeyCode::KeyW, KbgpNavCommand::NavigateUp);
+        self.bind_key(KeyCode::KeyS, KbgpNavCommand::NavigateDown);
+        self.bind_key(KeyCode::KeyA, KbgpNavCommand::NavigateLeft);
+        self.bind_key(KeyCode::KeyD, KbgpNavCommand::NavigateRight);
     }
 
     /// Bind WASD for navigation.

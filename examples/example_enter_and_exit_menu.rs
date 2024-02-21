@@ -32,20 +32,27 @@ fn main() {
                     KeyCode::Escape,
                     KbgpNavCommand::user(KbgpActions::ToggleMenu),
                 )
-                .with_key(KeyCode::Q, KbgpNavCommand::user(KbgpActions::ToggleMenuQ))
-                .with_key(KeyCode::P, KbgpNavCommand::user(KbgpActions::ToggleMenuP))
-                .with_key(KeyCode::Z, KbgpNavCommand::user(KbgpActions::ActionZ))
+                .with_key(
+                    KeyCode::KeyQ,
+                    KbgpNavCommand::user(KbgpActions::ToggleMenuQ),
+                )
+                .with_key(
+                    KeyCode::KeyP,
+                    KbgpNavCommand::user(KbgpActions::ToggleMenuP),
+                )
+                .with_key(KeyCode::KeyZ, KbgpNavCommand::user(KbgpActions::ActionZ))
         },
         ..Default::default()
     });
-    app.add_state::<AppState>();
+    app.init_state::<AppState>();
     app.insert_resource(ClickCountersForKeys(
         [
-            KeyCode::Return,
+            KeyCode::Enter,
+            KeyCode::NumpadEnter,
             KeyCode::Space,
             KeyCode::Escape,
-            KeyCode::Q,
-            KeyCode::Z,
+            KeyCode::KeyQ,
+            KeyCode::KeyZ,
         ]
         .into_iter()
         .map(|key_code| (key_code, Default::default()))
@@ -167,7 +174,7 @@ fn data_display_system(
 
 fn data_update_system(
     time: Res<Time>,
-    keyboard: Res<Input<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut click_counters_for_keys: ResMut<ClickCountersForKeys>,
 ) {
     for (key_code, click_counters) in click_counters_for_keys.0.iter_mut() {
