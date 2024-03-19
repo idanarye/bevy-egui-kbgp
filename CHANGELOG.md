@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 0.18.0 - 2024-03-19
 ### Changed
-- Update bevy_egui version to 0.25.
+- Update bevy_egui version to 0.26.
 
 ## 0.17.0 - 2024-02-22
 ### Changed
