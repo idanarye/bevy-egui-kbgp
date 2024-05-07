@@ -253,39 +253,40 @@ impl KbgpNavigationState {
 
         match &mut self.pending_release_state {
             PendingReleaseState::Idle => {
-                self.pending_release_state =
-                    match handle.input & (INPUT_MASK_CLICK | INPUT_MASK_USER_ACTION) {
-                        0 => PendingReleaseState::Idle,
-                        INPUT_MASK_CLICK => {
-                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focused()) {
-                                PendingReleaseState::NodeHeld {
-                                    id: current_focus,
-                                    is_user_action: false,
-                                    user_action: prev_user_action,
-                                }
-                            } else {
-                                PendingReleaseState::Invalidated {
-                                    cooldown_frame: false,
-                                }
+                self.pending_release_state = match handle.input
+                    & (INPUT_MASK_CLICK | INPUT_MASK_USER_ACTION)
+                {
+                    0 => PendingReleaseState::Idle,
+                    INPUT_MASK_CLICK => {
+                        if let Some(current_focus) = egui_ctx.memory(|memory| memory.focused()) {
+                            PendingReleaseState::NodeHeld {
+                                id: current_focus,
+                                is_user_action: false,
+                                user_action: prev_user_action,
+                            }
+                        } else {
+                            PendingReleaseState::Invalidated {
+                                cooldown_frame: false,
                             }
                         }
-                        INPUT_MASK_USER_ACTION => {
-                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focused()) {
-                                PendingReleaseState::NodeHeld {
-                                    id: current_focus,
-                                    is_user_action: true,
-                                    user_action: prev_user_action,
-                                }
-                            } else {
-                                PendingReleaseState::GloballyHeld {
-                                    user_action: prev_user_action,
-                                }
-                            }
-                        }
-                        _ => PendingReleaseState::Invalidated {
-                            cooldown_frame: false,
-                        },
                     }
+                    INPUT_MASK_USER_ACTION => {
+                        if let Some(current_focus) = egui_ctx.memory(|memory| memory.focused()) {
+                            PendingReleaseState::NodeHeld {
+                                id: current_focus,
+                                is_user_action: true,
+                                user_action: prev_user_action,
+                            }
+                        } else {
+                            PendingReleaseState::GloballyHeld {
+                                user_action: prev_user_action,
+                            }
+                        }
+                    }
+                    _ => PendingReleaseState::Invalidated {
+                        cooldown_frame: false,
+                    },
+                }
             }
             PendingReleaseState::NodeHeld {
                 id,
