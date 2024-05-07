@@ -257,7 +257,7 @@ impl KbgpNavigationState {
                     match handle.input & (INPUT_MASK_CLICK | INPUT_MASK_USER_ACTION) {
                         0 => PendingReleaseState::Idle,
                         INPUT_MASK_CLICK => {
-                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focus()) {
+                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focused()) {
                                 PendingReleaseState::NodeHeld {
                                     id: current_focus,
                                     is_user_action: false,
@@ -270,7 +270,7 @@ impl KbgpNavigationState {
                             }
                         }
                         INPUT_MASK_USER_ACTION => {
-                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focus()) {
+                            if let Some(current_focus) = egui_ctx.memory(|memory| memory.focused()) {
                                 PendingReleaseState::NodeHeld {
                                     id: current_focus,
                                     is_user_action: true,
@@ -292,7 +292,7 @@ impl KbgpNavigationState {
                 is_user_action,
                 user_action,
             } => {
-                let current_focus = egui_ctx.memory(|memory| memory.focus());
+                let current_focus = egui_ctx.memory(|memory| memory.focused());
                 match handle.input & (INPUT_MASK_CLICK | INPUT_MASK_USER_ACTION) {
                     0 => {
                         if current_focus == Some(*id) {
@@ -402,7 +402,7 @@ impl KbgpNavigationState {
             .nodes
             .iter()
             .map(|(id, data)| (id, transform_rect_downward(data.rect)));
-        let focused_node_id = move_from.or_else(|| egui_ctx.memory(|memory| memory.focus()));
+        let focused_node_id = move_from.or_else(|| egui_ctx.memory(|memory| memory.focused()));
         if let Some(focused_node_id) = focused_node_id {
             let focused_node_rect = if let Some(data) = common.nodes.get(&focused_node_id) {
                 transform_rect_downward(data.rect)

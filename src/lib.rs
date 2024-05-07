@@ -283,7 +283,7 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
 /// Cancel's any tab-based navigation egui did in its `BeginFrame`.
 pub fn kbgp_intercept_default_navigation(egui_ctx: &egui::Context) {
     egui_ctx.memory_mut(|memory| {
-        if let Some(focus) = memory.focus() {
+        if let Some(focus) = memory.focused() {
             memory.set_focus_lock_filter(
                 focus,
                 egui::EventFilter {
@@ -323,7 +323,7 @@ pub fn kbgp_prevent_loss_of_focus(egui_ctx: &egui::Context) {
     match &mut kbgp.state {
         KbgpState::PendingInput(_) => {}
         KbgpState::Navigation(state) => {
-            let current_focus = egui_ctx.memory(|memory| memory.focus());
+            let current_focus = egui_ctx.memory(|memory| memory.focused());
             if let Some(current_focus) = current_focus {
                 state.last_focus = Some(current_focus);
             } else if let Some(last_focus) = state.last_focus.take() {
