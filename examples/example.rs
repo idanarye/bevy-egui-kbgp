@@ -30,10 +30,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.add_plugins(EguiPlugin);
     app.add_plugins(KbgpPlugin);
-    app.insert_resource(EguiSettings {
-        scale_factor: 1.5,
-        ..Default::default()
-    });
+    app.insert_resource(EguiSettings { scale_factor: 1.5 });
     app.insert_resource(KbgpSettings {
         disable_default_navigation: true,
         disable_default_activation: true,

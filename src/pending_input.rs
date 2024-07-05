@@ -71,14 +71,10 @@ impl<'a> KbgpInputManualHandle<'a> {
 
     /// Show a tooltip of the currently received input.
     pub fn show_current_chord(&self, response: &egui::Response) {
-        egui::containers::popup::show_tooltip_for(
-            &response.ctx,
-            egui::Id::NULL,
-            &response.rect,
-            |ui| {
-                ui.label(&self.format_current_chord());
-            },
-        );
+        response.show_tooltip_ui(|ui| {
+            ui.set_max_width(100.0); // TODO: make this more automatic?
+            ui.label(&self.format_current_chord());
+        });
     }
 }
 
