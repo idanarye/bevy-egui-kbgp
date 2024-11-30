@@ -27,3 +27,6 @@ bevy = { version = "^0.15", default-features = false, features = [
     "bevy_asset",
 ] }
 bevy_egui = { version = "^0.31", default-features = false, features = ["default_fonts", "render"] }
+
+[package.metadata.docs.rs]
+features = ["bevy/x11"] # required for bevy_egui

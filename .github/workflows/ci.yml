@@ -115,7 +115,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: doc
-          args: --no-deps
+          args: --no-deps --features bevy/x11
   docs-and-demos-ghpages:
     name: Update Docs and Demos in GitHub Pages
     runs-on: ubuntu-latest
@@ -135,7 +135,7 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |-
-          cargo doc --verbose &&
+          cargo doc --features bevy/x11 --verbose &&
           echo "<meta http-equiv=refresh content=0;url=bevy_egui_kbgp/index.html>" > target/doc/index.html &&
           cargo build --examples --target wasm32-unknown-unknown --features bevy/webgl2 &&
           for demowasm in $(cd target/wasm32-unknown-unknown/debug/examples; ls *.wasm | grep -v -); do
