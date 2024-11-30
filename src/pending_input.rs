@@ -33,15 +33,15 @@ impl<'a> KbgpInputManualHandle<'a> {
         for input in self.state.input_this_frame.iter() {
             if should_add(self, input.clone()) {
                 match input {
-                    KbgpInput::GamepadAxisPositive(gamepad_axis) => {
+                    KbgpInput::GamepadAxisPositive(entity, gamepad_axis) => {
                         self.state
                             .received_input
-                            .remove(&KbgpInput::GamepadAxisNegative(*gamepad_axis));
+                            .remove(&KbgpInput::GamepadAxisNegative(*entity, *gamepad_axis));
                     }
-                    KbgpInput::GamepadAxisNegative(gamepad_axis) => {
+                    KbgpInput::GamepadAxisNegative(entity, gamepad_axis) => {
                         self.state
                             .received_input
-                            .remove(&KbgpInput::GamepadAxisPositive(*gamepad_axis));
+                            .remove(&KbgpInput::GamepadAxisPositive(*entity, *gamepad_axis));
                     }
                     KbgpInput::MouseWheelUp => {
                         self.state.received_input.remove(&KbgpInput::MouseWheelDown);
@@ -73,7 +73,7 @@ impl<'a> KbgpInputManualHandle<'a> {
     pub fn show_current_chord(&self, response: &egui::Response) {
         response.show_tooltip_ui(|ui| {
             ui.set_max_width(100.0); // TODO: make this more automatic?
-            ui.label(&self.format_current_chord());
+            ui.label(self.format_current_chord());
         });
     }
 }
@@ -177,32 +177,28 @@ impl KbgpPreparePendingInput {
     }
 
     /// Notify KBGP about all the input from the gamepad.
-    pub fn accept_gamepad_input(
-        &mut self,
-        gamepads: &Gamepads,
-        axes: &Axis<GamepadAxis>,
-        buttons: &ButtonInput<GamepadButton>,
-    ) {
-        self.accept_inputs(buttons.get_pressed().copied().map(KbgpInput::GamepadButton));
-        for gamepad in gamepads.iter() {
-            for axis_type in [
-                GamepadAxisType::LeftStickX,
-                GamepadAxisType::LeftStickY,
-                GamepadAxisType::LeftZ,
-                GamepadAxisType::RightStickX,
-                GamepadAxisType::RightStickY,
-                GamepadAxisType::RightZ,
-            ] {
-                let gamepad_axis = GamepadAxis { gamepad, axis_type };
-                if let Some(axis_value) = axes.get(gamepad_axis) {
-                    if 0.5 < axis_value {
-                        self.accept_input(KbgpInput::GamepadAxisPositive(gamepad_axis));
-                    } else if axis_value < -0.5 {
-                        self.accept_input(KbgpInput::GamepadAxisNegative(gamepad_axis));
-                    }
+    pub fn accept_gamepad_input(&mut self, gamepad_entity: Entity, gamepad: &Gamepad) {
+        self.accept_inputs(
+            gamepad
+                .get_pressed()
+                .copied()
+                .map(|gamepad_button| KbgpInput::GamepadButton(gamepad_entity, gamepad_button)),
+        );
+        for gamepad_axis in [
+            GamepadAxis::LeftStickX,
+            GamepadAxis::LeftStickY,
+            GamepadAxis::LeftZ,
+            GamepadAxis::RightStickX,
+            GamepadAxis::RightStickY,
+            GamepadAxis::RightZ,
+        ] {
+            if let Some(axis_value) = gamepad.get(gamepad_axis) {
+                if 0.5 < axis_value {
+                    self.accept_input(KbgpInput::GamepadAxisPositive(gamepad_entity, gamepad_axis));
+                } else if axis_value < -0.5 {
+                    self.accept_input(KbgpInput::GamepadAxisNegative(gamepad_entity, gamepad_axis));
                 }
             }
         }
-        let _ = (gamepads, axes);
     }
 }

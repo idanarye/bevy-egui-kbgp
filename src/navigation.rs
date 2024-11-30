@@ -122,43 +122,35 @@ impl KbgpPrepareNavigation {
         }
     }
 
-    /// Navigate the UI with gamepads.
+    /// Navigate the UI with a gamepad.
     ///
     /// * Use both left stick and d-pad for navigation.
     pub fn navigate_gamepad_by_binding(
         &mut self,
-        gamepads: &Gamepads,
-        axes: &Axis<GamepadAxis>,
-        buttons: &ButtonInput<GamepadButton>,
-        binding: &HashMap<GamepadButtonType, KbgpNavCommand>,
+        gamepad: &Gamepad,
+        binding: &HashMap<GamepadButton, KbgpNavCommand>,
     ) {
-        for gamepad in gamepads.iter() {
-            for (axis_type, action_for_negative, action_for_positive) in [
-                (
-                    GamepadAxisType::LeftStickX,
-                    KbgpNavCommand::NavigateLeft,
-                    KbgpNavCommand::NavigateRight,
-                ),
-                (
-                    GamepadAxisType::LeftStickY,
-                    KbgpNavCommand::NavigateDown,
-                    KbgpNavCommand::NavigateUp,
-                ),
-            ] {
-                if let Some(axis_value) = axes.get(GamepadAxis { gamepad, axis_type }) {
-                    if axis_value < -0.5 {
-                        self.apply_action(&action_for_negative)
-                    } else if 0.5 < axis_value {
-                        self.apply_action(&action_for_positive)
-                    }
+        for (axis_type, action_for_negative, action_for_positive) in [
+            (
+                GamepadAxis::LeftStickX,
+                KbgpNavCommand::NavigateLeft,
+                KbgpNavCommand::NavigateRight,
+            ),
+            (
+                GamepadAxis::LeftStickY,
+                KbgpNavCommand::NavigateDown,
+                KbgpNavCommand::NavigateUp,
+            ),
+        ] {
+            if let Some(axis_value) = gamepad.get(axis_type) {
+                if axis_value < -0.5 {
+                    self.apply_action(&action_for_negative)
+                } else if 0.5 < axis_value {
+                    self.apply_action(&action_for_positive)
                 }
             }
         }
-        for GamepadButton {
-            gamepad: _,
-            button_type,
-        } in buttons.get_pressed()
-        {
+        for button_type in gamepad.get_pressed() {
             if let Some(action) = binding.get(button_type) {
                 self.apply_action(action);
             }
@@ -582,7 +574,7 @@ pub struct KbgpNavBindings {
     ///
     /// These are not limited to a specific gamepad, and are for buttons only - the axis behavior
     /// is hard coded. Note that in some environments the d-pad is treated as an axis.
-    pub gamepad_buttons: HashMap<GamepadButtonType, KbgpNavCommand>,
+    pub gamepad_buttons: HashMap<GamepadButton, KbgpNavCommand>,
 }
 
 impl Default for KbgpNavBindings {
@@ -643,11 +635,11 @@ impl KbgpNavBindings {
     ///
     /// [`KbgpNavBindings::default`] already contains these mappings.
     pub fn bind_gamepad_dpad_navigation_and_south_button_activation(&mut self) {
-        self.bind_gamepad_button(GamepadButtonType::DPadUp, KbgpNavCommand::NavigateUp);
-        self.bind_gamepad_button(GamepadButtonType::DPadDown, KbgpNavCommand::NavigateDown);
-        self.bind_gamepad_button(GamepadButtonType::DPadLeft, KbgpNavCommand::NavigateLeft);
-        self.bind_gamepad_button(GamepadButtonType::DPadRight, KbgpNavCommand::NavigateRight);
-        self.bind_gamepad_button(GamepadButtonType::South, KbgpNavCommand::Click);
+        self.bind_gamepad_button(GamepadButton::DPadUp, KbgpNavCommand::NavigateUp);
+        self.bind_gamepad_button(GamepadButton::DPadDown, KbgpNavCommand::NavigateDown);
+        self.bind_gamepad_button(GamepadButton::DPadLeft, KbgpNavCommand::NavigateLeft);
+        self.bind_gamepad_button(GamepadButton::DPadRight, KbgpNavCommand::NavigateRight);
+        self.bind_gamepad_button(GamepadButton::South, KbgpNavCommand::Click);
     }
 
     /// Bind the gamepad's d-pad for navigation and south button for activation.
@@ -684,18 +676,14 @@ impl KbgpNavBindings {
     }
 
     /// Bind a command to a gamepad button.
-    pub fn bind_gamepad_button(
-        &mut self,
-        gamepad_button: GamepadButtonType,
-        command: KbgpNavCommand,
-    ) {
+    pub fn bind_gamepad_button(&mut self, gamepad_button: GamepadButton, command: KbgpNavCommand) {
         self.gamepad_buttons.insert(gamepad_button, command);
     }
 
     /// Bind a command to a gamepad button.
     pub fn with_gamepad_button(
         mut self,
-        gamepad_button: GamepadButtonType,
+        gamepad_button: GamepadButton,
         command: KbgpNavCommand,
     ) -> Self {
         self.bind_gamepad_button(gamepad_button, command);

@@ -111,7 +111,7 @@ impl Plugin for KbgpPlugin {
         app.insert_resource(KbgpSettings::default());
         app.add_systems(
             PreUpdate,
-            kbgp_system_default_input.after(bevy_egui::EguiSet::BeginFrame),
+            kbgp_system_default_input.after(bevy_egui::EguiSet::BeginPass),
         );
     }
 }
@@ -224,9 +224,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 /// fn custom_kbgp_system(
 ///     mut egui_context: EguiContexts,
 ///     keys: Res<ButtonInput<KeyCode>>,
-///     gamepads: Res<Gamepads>,
-///     gamepad_axes: Res<Axis<GamepadAxis>>,
-///     gamepad_buttons: Res<ButtonInput<GamepadButton>>,
+///     gamepads: Query<(Entity, &Gamepad)>,
 ///     mouse_buttons: Res<ButtonInput<MouseButton>>,
 ///     settings: Res<KbgpSettings>,
 /// ) {
@@ -234,12 +232,16 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///         match prp {
 ///             KbgpPrepare::Navigation(prp) => {
 ///                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard, true);
-///                 prp.navigate_gamepad_by_binding(&gamepads, &gamepad_axes, &gamepad_buttons, &settings.bindings.gamepad_buttons);
+///                 for (_, gamepad) in gamepads.iter() {
+///                     prp.navigate_gamepad_by_binding(gamepad, &settings.bindings.gamepad_buttons);
+///                 }
 ///             }
 ///             KbgpPrepare::PendingInput(prp) => {
 ///                 prp.accept_keyboard_input(&keys);
 ///                 prp.accept_mouse_buttons_input(&mouse_buttons);
-///                 prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
+///                 for (gamepad_entity, gamepad) in gamepads.iter() {
+///                     prp.accept_gamepad_input(gamepad_entity, gamepad);
+///                 }
 ///             }
 ///         }
 ///     });
@@ -378,9 +380,7 @@ fn kbgp_system_default_input(
     keys: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut mouse_wheel_events: EventReader<bevy::input::mouse::MouseWheel>,
-    gamepads: Res<Gamepads>,
-    gamepad_axes: Res<Axis<GamepadAxis>>,
-    gamepad_buttons: Res<ButtonInput<GamepadButton>>,
+    gamepads: Query<(Entity, &Gamepad)>,
 ) {
     let egui_ctx = egui_context.ctx_mut();
     if settings.disable_default_navigation {
@@ -406,12 +406,9 @@ fn kbgp_system_default_input(
                 );
             }
             if settings.allow_gamepads {
-                prp.navigate_gamepad_by_binding(
-                    &gamepads,
-                    &gamepad_axes,
-                    &gamepad_buttons,
-                    &settings.bindings.gamepad_buttons,
-                );
+                for (_, gamepad) in gamepads.iter() {
+                    prp.navigate_gamepad_by_binding(gamepad, &settings.bindings.gamepad_buttons);
+                }
             }
         }
         KbgpPrepare::PendingInput(prp) => {
@@ -431,7 +428,9 @@ fn kbgp_system_default_input(
                 }
             }
             if settings.allow_gamepads {
-                prp.accept_gamepad_input(&gamepads, &gamepad_axes, &gamepad_buttons);
+                for (gamepad_entity, gamepad) in gamepads.iter() {
+                    prp.accept_gamepad_input(gamepad_entity, gamepad);
+                }
             }
         }
     });
@@ -933,9 +932,9 @@ pub enum KbgpInput {
     MouseWheelDown,
     MouseWheelLeft,
     MouseWheelRight,
-    GamepadAxisPositive(GamepadAxis),
-    GamepadAxisNegative(GamepadAxis),
-    GamepadButton(GamepadButton),
+    GamepadAxisPositive(Entity, GamepadAxis),
+    GamepadAxisNegative(Entity, GamepadAxis),
+    GamepadButton(Entity, GamepadButton),
 }
 
 impl core::fmt::Display for KbgpInput {
@@ -950,18 +949,15 @@ impl core::fmt::Display for KbgpInput {
             KbgpInput::MouseWheelDown => write!(f, "MouseScrollDown")?,
             KbgpInput::MouseWheelLeft => write!(f, "MouseScrollLeft")?,
             KbgpInput::MouseWheelRight => write!(f, "MouseScrollRight")?,
-            KbgpInput::GamepadButton(GamepadButton {
-                gamepad: Gamepad { id },
-                button_type,
-            }) => write!(f, "[{id}]{button_type:?}")?,
-            KbgpInput::GamepadAxisPositive(GamepadAxis {
-                gamepad: Gamepad { id },
-                axis_type,
-            }) => write!(f, "[{id}]{axis_type:?}")?,
-            KbgpInput::GamepadAxisNegative(GamepadAxis {
-                gamepad: Gamepad { id },
-                axis_type,
-            }) => write!(f, "[{id}]-{axis_type:?}")?,
+            KbgpInput::GamepadButton(entity, gamepad_button) => {
+                write!(f, "[{entity}]{gamepad_button:?}")?
+            }
+            KbgpInput::GamepadAxisPositive(entity, gamepad_axis) => {
+                write!(f, "[{entity}]{gamepad_axis:?}")?
+            }
+            KbgpInput::GamepadAxisNegative(entity, gamepad_axis) => {
+                write!(f, "[{entity}]-{gamepad_axis:?}")?
+            }
         }
         Ok(())
     }
@@ -990,18 +986,9 @@ impl KbgpInput {
             KbgpInput::MouseWheelDown => KbgpInputSource::KeyboardAndMouse,
             KbgpInput::MouseWheelLeft => KbgpInputSource::KeyboardAndMouse,
             KbgpInput::MouseWheelRight => KbgpInputSource::KeyboardAndMouse,
-            KbgpInput::GamepadAxisPositive(GamepadAxis {
-                gamepad,
-                axis_type: _,
-            }) => KbgpInputSource::Gamepad(*gamepad),
-            KbgpInput::GamepadAxisNegative(GamepadAxis {
-                gamepad,
-                axis_type: _,
-            }) => KbgpInputSource::Gamepad(*gamepad),
-            KbgpInput::GamepadButton(GamepadButton {
-                gamepad,
-                button_type: _,
-            }) => KbgpInputSource::Gamepad(*gamepad),
+            KbgpInput::GamepadAxisPositive(entity, _) => KbgpInputSource::Gamepad(*entity),
+            KbgpInput::GamepadAxisNegative(entity, _) => KbgpInputSource::Gamepad(*entity),
+            KbgpInput::GamepadButton(entity, _) => KbgpInputSource::Gamepad(*entity),
         }
     }
 }
@@ -1010,7 +997,7 @@ impl KbgpInput {
 #[derive(Hash, PartialEq, Eq, Debug, Clone, Copy)]
 pub enum KbgpInputSource {
     KeyboardAndMouse,
-    Gamepad(Gamepad),
+    Gamepad(Entity),
 }
 
 /// A source of input for chords
@@ -1018,17 +1005,17 @@ impl core::fmt::Display for KbgpInputSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             KbgpInputSource::KeyboardAndMouse => write!(f, "Keyboard&Mouse"),
-            KbgpInputSource::Gamepad(Gamepad { id }) => write!(f, "Gamepad {id}"),
+            KbgpInputSource::Gamepad(entity) => write!(f, "Gamepad {entity}"),
         }
     }
 }
 
 impl KbgpInputSource {
     /// The gamepad of the source, of `None` if the source is keyboard or mouse.
-    pub fn gamepad(&self) -> Option<Gamepad> {
+    pub fn gamepad(&self) -> Option<Entity> {
         match self {
             KbgpInputSource::KeyboardAndMouse => None,
-            KbgpInputSource::Gamepad(gamepad) => Some(*gamepad),
+            KbgpInputSource::Gamepad(entity) => Some(*entity),
         }
     }
 }

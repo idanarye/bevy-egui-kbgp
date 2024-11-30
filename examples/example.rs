@@ -30,7 +30,11 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.add_plugins(EguiPlugin);
     app.add_plugins(KbgpPlugin);
-    app.insert_resource(EguiSettings { scale_factor: 1.5 });
+    app.add_systems(Startup, |mut settings: Query<&mut EguiSettings>| {
+        for mut settings in settings.iter_mut() {
+            settings.scale_factor = 1.5;
+        }
+    });
     app.insert_resource(KbgpSettings {
         disable_default_navigation: true,
         disable_default_activation: true,
@@ -51,15 +55,15 @@ fn main() {
                 .with_key(KeyCode::Delete, KbgpNavCommand::user(MyActions::Delete))
                 // Special actions - gamepad:
                 .with_gamepad_button(
-                    GamepadButtonType::LeftTrigger,
+                    GamepadButton::LeftTrigger,
                     KbgpNavCommand::user(MyActions::PrevMenu),
                 )
                 .with_gamepad_button(
-                    GamepadButtonType::RightTrigger,
+                    GamepadButton::RightTrigger,
                     KbgpNavCommand::user(MyActions::NextMenu),
                 )
                 .with_gamepad_button(
-                    GamepadButtonType::North,
+                    GamepadButton::North,
                     KbgpNavCommand::user(MyActions::Delete),
                 )
         },
@@ -139,7 +143,7 @@ fn ui_system(
     mut settable_inputs: Local<Vec<Option<KbgpInput>>>,
     mut settable_chords: Local<Vec<HashSet<KbgpInput>>>,
     mut settable_same_source_chords: Local<Vec<HashSet<KbgpInput>>>,
-    gamepads: Res<Gamepads>,
+    gamepad_entities: Query<Entity, With<Gamepad>>,
     mut settable_inputs_of_source: Local<Vec<(KbgpInputSource, Vec<Option<KbgpInput>>)>>,
     mut settable_chords_of_source: Local<Vec<(KbgpInputSource, Vec<HashSet<KbgpInput>>)>>,
 ) {
@@ -156,7 +160,7 @@ fn ui_system(
         }
     }
     let mut all_input_sources = vec![KbgpInputSource::KeyboardAndMouse];
-    all_input_sources.extend(gamepads.iter().map(KbgpInputSource::Gamepad));
+    all_input_sources.extend(gamepad_entities.iter().map(KbgpInputSource::Gamepad));
     while settable_inputs_of_source.len() < all_input_sources.len() {
         let source = all_input_sources[settable_inputs_of_source.len()];
         settable_inputs_of_source.push((source, vec![None; 3]));
