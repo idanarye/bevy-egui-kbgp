@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::utils::HashSet;
-use bevy_egui::{EguiContexts, EguiPlugin, EguiSettings};
+use bevy_egui::{EguiContextSettings, EguiContexts, EguiPlugin};
 use bevy_egui_kbgp::egui;
 use bevy_egui_kbgp::prelude::*;
 
@@ -30,7 +30,7 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.add_plugins(EguiPlugin);
     app.add_plugins(KbgpPlugin);
-    app.add_systems(Startup, |mut settings: Query<&mut EguiSettings>| {
+    app.add_systems(Startup, |mut settings: Query<&mut EguiContextSettings>| {
         for mut settings in settings.iter_mut() {
             settings.scale_factor = 1.5;
         }

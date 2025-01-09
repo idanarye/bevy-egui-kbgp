@@ -15,7 +15,7 @@ categories = ["game-engines", "gui"]
 
 [dependencies]
 bevy = { version = "^0.15", default-features = false }
-bevy_egui = { version = "^0.31", default-features = false }
+bevy_egui = { version = "^0.32", default-features = false }
 
 [dev-dependencies]
 bevy = { version = "^0.15", default-features = false, features = [
@@ -25,8 +25,9 @@ bevy = { version = "^0.15", default-features = false, features = [
     "bevy_window",
     "bevy_render",
     "bevy_asset",
+    "bevy_picking",
 ] }
-bevy_egui = { version = "^0.31", default-features = false, features = ["default_fonts", "render"] }
+bevy_egui = { version = "^0.32", default-features = false, features = ["default_fonts", "render"] }
 
 [package.metadata.docs.rs]
 features = ["bevy/x11"] # required for bevy_egui
