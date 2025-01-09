@@ -218,7 +218,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 /// ```no_run
 /// # use bevy_egui_kbgp::bevy_egui;
 /// # use bevy::prelude::*;
-/// # use bevy_egui::{EguiContexts, EguiPlugin, EguiSettings};
+/// # use bevy_egui::{EguiContexts, EguiPlugin};
 /// # use bevy_egui_kbgp::prelude::*;
 /// # use bevy_egui_kbgp::KbgpPrepare;
 /// fn custom_kbgp_system(
