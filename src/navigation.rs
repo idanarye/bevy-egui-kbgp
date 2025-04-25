@@ -1,8 +1,8 @@
 use std::any::Any;
 
 use crate::egui;
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 
 use crate::KbgpCommon;
 

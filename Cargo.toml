@@ -14,11 +14,11 @@ categories = ["game-engines", "gui"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "^0.15", default-features = false }
-bevy_egui = { version = "^0.33", default-features = false }
+bevy = { version = "^0.16", default-features = false }
+bevy_egui = { version = "^0.34", default-features = false }
 
 [dev-dependencies]
-bevy = { version = "^0.15", default-features = false, features = [
+bevy = { version = "^0.16", default-features = false, features = [
     "bevy_gilrs",
     "x11",
     "bevy_state",
@@ -27,7 +27,7 @@ bevy = { version = "^0.15", default-features = false, features = [
     "bevy_asset",
     "bevy_picking",
 ] }
-bevy_egui = { version = "^0.33", default-features = false, features = ["default_fonts", "render"] }
+bevy_egui = { version = "^0.34", default-features = false, features = ["default_fonts", "render"] }
 
 [package.metadata.docs.rs]
 features = ["bevy/x11"] # required for bevy_egui

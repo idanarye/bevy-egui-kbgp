@@ -77,9 +77,9 @@
 pub use bevy_egui;
 pub use bevy_egui::egui;
 
+use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
-use bevy_egui::EguiContexts;
+use bevy_egui::{EguiContextPass, EguiContexts};
 
 use self::navigation::KbgpPrepareNavigation;
 pub use self::navigation::{KbgpNavActivation, KbgpNavBindings, KbgpNavCommand};
@@ -110,7 +110,7 @@ impl Plugin for KbgpPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(KbgpSettings::default());
         app.add_systems(
-            PreUpdate,
+            EguiContextPass,
             kbgp_system_default_input.after(bevy_egui::EguiPreUpdateSet::BeginPass),
         );
     }

@@ -1,6 +1,6 @@
 use crate::egui;
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy::utils::HashSet;
 
 use crate::{KbgpCommon, KbgpInput};
 

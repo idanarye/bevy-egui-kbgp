@@ -1,5 +1,6 @@
+use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy::utils::HashSet;
+use bevy_egui::EguiContextPass;
 use bevy_egui::{EguiContextSettings, EguiContexts, EguiPlugin};
 use bevy_egui_kbgp::egui;
 use bevy_egui_kbgp::prelude::*;
@@ -28,7 +29,9 @@ enum MyFocusLabel {
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(EguiPlugin);
+    app.add_plugins(EguiPlugin {
+        enable_multipass_for_primary_context: true,
+    });
     app.add_plugins(KbgpPlugin);
     app.add_systems(Startup, |mut settings: Query<&mut EguiContextSettings>| {
         for mut settings in settings.iter_mut() {
@@ -69,14 +72,13 @@ fn main() {
         },
     });
     app.init_state::<MenuState>();
-    app.add_systems(Update, ui_system.run_if(in_state(MenuState::Main)));
     app.add_systems(
-        Update,
-        empty_state_system.run_if(in_state(MenuState::Empty1)),
-    );
-    app.add_systems(
-        Update,
-        empty_state_system.run_if(in_state(MenuState::Empty2)),
+        EguiContextPass,
+        (
+            ui_system.run_if(in_state(MenuState::Main)),
+            empty_state_system.run_if(in_state(MenuState::Empty1)),
+            empty_state_system.run_if(in_state(MenuState::Empty2)),
+        ),
     );
     app.run();
 }

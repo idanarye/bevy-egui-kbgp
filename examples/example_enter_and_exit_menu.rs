@@ -23,7 +23,9 @@ enum KbgpActions {
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(EguiPlugin);
+    app.add_plugins(EguiPlugin {
+        enable_multipass_for_primary_context: false,
+    });
     app.add_plugins(KbgpPlugin);
     app.insert_resource(KbgpSettings {
         bindings: {
