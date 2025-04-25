@@ -1,7 +1,6 @@
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy_egui::EguiContextPass;
-use bevy_egui::{EguiContextSettings, EguiContexts, EguiPlugin};
+use bevy_egui::{EguiContextPass, EguiContextSettings, EguiContexts, EguiPlugin};
 use bevy_egui_kbgp::egui;
 use bevy_egui_kbgp::prelude::*;
 

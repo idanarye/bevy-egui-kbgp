@@ -20,15 +20,17 @@
 //! ```no_run
 //! use bevy_egui_kbgp::{egui, bevy_egui};
 //! use bevy::prelude::*;
-//! use bevy_egui::{EguiContexts, EguiPlugin};
+//! use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin};
 //! use bevy_egui_kbgp::prelude::*;
 //!
 //! fn main() {
 //!     App::new()
 //!         .add_plugins(DefaultPlugins)
-//!         .add_plugins(EguiPlugin)
+//!         .add_plugins(EguiPlugin {
+//!             enable_multipass_for_primary_context: true,
+//!         })
 //!         .add_plugins(KbgpPlugin)
-//!         .add_systems(Update, ui_system)
+//!         .add_systems(EguiContextPass, ui_system)
 //!         .run();
 //! }
 //!
@@ -577,15 +579,17 @@ pub trait KbgpEguiResponseExt: Sized {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContexts, EguiPlugin};
+    /// use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugins(EguiPlugin)
+    ///         .add_plugins(EguiPlugin {
+    ///             enable_multipass_for_primary_context: true,
+    ///         })
     ///         .add_plugins(KbgpPlugin)
-    ///         .add_systems(Update, ui_system)
+    ///         .add_systems(EguiContextPass, ui_system)
     ///         .insert_resource(JumpInput(KbgpInput::Keyboard(KeyCode::Space)))
     ///         .run();
     /// }
@@ -625,15 +629,17 @@ pub trait KbgpEguiResponseExt: Sized {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContexts, EguiPlugin};
+    /// use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugins(EguiPlugin)
+    ///         .add_plugins(EguiPlugin {
+    ///             enable_multipass_for_primary_context: true,
+    ///         })
     ///         .add_plugins(KbgpPlugin)
-    ///         .add_systems(Update, ui_system)
+    ///         .add_systems(EguiContextPass, ui_system)
     ///         .insert_resource(JumpChord(vec![KbgpInput::Keyboard(KeyCode::Space)]))
     ///         .run();
     /// }
