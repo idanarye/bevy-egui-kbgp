@@ -20,25 +20,23 @@
 //! ```no_run
 //! use bevy_egui_kbgp::{egui, bevy_egui};
 //! use bevy::prelude::*;
-//! use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin};
+//! use bevy_egui::{EguiPrimaryContextPass, EguiContexts, EguiPlugin};
 //! use bevy_egui_kbgp::prelude::*;
 //!
 //! fn main() {
 //!     App::new()
 //!         .add_plugins(DefaultPlugins)
-//!         .add_plugins(EguiPlugin {
-//!             enable_multipass_for_primary_context: true,
-//!         })
+//!         .add_plugins(EguiPlugin::default())
 //!         .add_plugins(KbgpPlugin)
-//!         .add_systems(EguiContextPass, ui_system)
+//!         .add_systems(EguiPrimaryContextPass, ui_system)
 //!         .run();
 //! }
 //!
 //! fn ui_system(
 //!     mut egui_context: EguiContexts,
 //!     keys: Res<ButtonInput<KeyCode>>,
-//! ) {
-//!     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+//! ) -> Result {
+//!     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
 //!         if ui
 //!             .button("Button")
 //!             .kbgp_initial_focus()
@@ -56,6 +54,7 @@
 //!             // Do something with the input
 //!         }
 //!     });
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -81,7 +80,7 @@ pub use bevy_egui::egui;
 
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
-use bevy_egui::{EguiContextPass, EguiContexts};
+use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
 
 use self::navigation::KbgpPrepareNavigation;
 pub use self::navigation::{KbgpNavActivation, KbgpNavBindings, KbgpNavCommand};
@@ -112,7 +111,7 @@ impl Plugin for KbgpPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(KbgpSettings::default());
         app.add_systems(
-            EguiContextPass,
+            EguiPrimaryContextPass,
             kbgp_system_default_input.after(bevy_egui::EguiPreUpdateSet::BeginPass),
         );
     }
@@ -229,8 +228,8 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///     gamepads: Query<(Entity, &Gamepad)>,
 ///     mouse_buttons: Res<ButtonInput<MouseButton>>,
 ///     settings: Res<KbgpSettings>,
-/// ) {
-///     kbgp_prepare(egui_context.ctx_mut(), |prp| {
+/// ) -> Result {
+///     kbgp_prepare(egui_context.ctx_mut()?, |prp| {
 ///         match prp {
 ///             KbgpPrepare::Navigation(prp) => {
 ///                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard, true);
@@ -247,6 +246,7 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///             }
 ///         }
 ///     });
+///     Ok(())
 /// }
 /// ```
 pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepare<'_>)) {
@@ -383,8 +383,8 @@ fn kbgp_system_default_input(
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut mouse_wheel_events: EventReader<bevy::input::mouse::MouseWheel>,
     gamepads: Query<(Entity, &Gamepad)>,
-) {
-    let egui_ctx = egui_context.ctx_mut();
+) -> Result {
+    let egui_ctx = egui_context.ctx_mut()?;
     if settings.disable_default_navigation {
         kbgp_intercept_default_navigation(egui_ctx);
     }
@@ -436,6 +436,7 @@ fn kbgp_system_default_input(
             }
         }
     });
+    Ok(())
 }
 
 #[derive(Default)]
@@ -579,17 +580,15 @@ pub trait KbgpEguiResponseExt: Sized {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin};
+    /// use bevy_egui::{EguiPrimaryContextPass, EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugins(EguiPlugin {
-    ///             enable_multipass_for_primary_context: true,
-    ///         })
+    ///         .add_plugins(EguiPlugin::default())
     ///         .add_plugins(KbgpPlugin)
-    ///         .add_systems(EguiContextPass, ui_system)
+    ///         .add_systems(EguiPrimaryContextPass, ui_system)
     ///         .insert_resource(JumpInput(KbgpInput::Keyboard(KeyCode::Space)))
     ///         .run();
     /// }
@@ -600,8 +599,8 @@ pub trait KbgpEguiResponseExt: Sized {
     /// fn ui_system(
     ///     mut egui_context: EguiContexts,
     ///     mut jump_input: ResMut<JumpInput>,
-    /// ) {
-    ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+    /// ) -> Result {
+    ///     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
     ///         ui.horizontal(|ui| {
     ///             ui.label("Set button for jumping");
     ///             if let Some(new_jump_input) = ui.button(format!("{}", jump_input.0))
@@ -612,6 +611,7 @@ pub trait KbgpEguiResponseExt: Sized {
     ///             }
     ///         });
     ///     });
+    ///     Ok(())
     /// }
     fn kbgp_pending_input(&self) -> Option<KbgpInput>;
 
@@ -629,17 +629,15 @@ pub trait KbgpEguiResponseExt: Sized {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin};
+    /// use bevy_egui::{EguiPrimaryContextPass, EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugins(EguiPlugin {
-    ///             enable_multipass_for_primary_context: true,
-    ///         })
+    ///         .add_plugins(EguiPlugin::default())
     ///         .add_plugins(KbgpPlugin)
-    ///         .add_systems(EguiContextPass, ui_system)
+    ///         .add_systems(EguiPrimaryContextPass, ui_system)
     ///         .insert_resource(JumpChord(vec![KbgpInput::Keyboard(KeyCode::Space)]))
     ///         .run();
     /// }
@@ -650,8 +648,8 @@ pub trait KbgpEguiResponseExt: Sized {
     /// fn ui_system(
     ///     mut egui_context: EguiContexts,
     ///     mut jump_chord: ResMut<JumpChord>,
-    /// ) {
-    ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+    /// ) -> Result {
+    ///     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
     ///         ui.horizontal(|ui| {
     ///             ui.label("Set chord of buttons for jumping");
     ///             if let Some(new_jump_chord) = ui
@@ -663,6 +661,7 @@ pub trait KbgpEguiResponseExt: Sized {
     ///             }
     ///         });
     ///     });
+    ///     Ok(())
     /// }
     fn kbgp_pending_chord(&self) -> Option<HashSet<KbgpInput>>;
 

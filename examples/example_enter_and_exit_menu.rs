@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, EguiPlugin};
+use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 use bevy_egui_kbgp::prelude::*;
 use bevy_egui_kbgp::{bevy_egui, egui};
 
@@ -23,9 +23,7 @@ enum KbgpActions {
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(EguiPlugin {
-        enable_multipass_for_primary_context: false,
-    });
+    app.add_plugins(EguiPlugin::default());
     app.add_plugins(KbgpPlugin);
     app.insert_resource(KbgpSettings {
         bindings: {
@@ -60,12 +58,17 @@ fn main() {
         .map(|key_code| (key_code, Default::default()))
         .collect(),
     ));
+    app.add_systems(Startup, |mut commands: Commands| {
+        commands.spawn(Camera2d);
+    });
     app.add_systems(
-        Update,
-        listen_to_menu_key.run_if(in_state(AppState::NoMenu)),
+        EguiPrimaryContextPass,
+        (
+            listen_to_menu_key.run_if(in_state(AppState::NoMenu)),
+            ui_system.run_if(in_state(AppState::Menu)),
+            data_display_system,
+        ),
     );
-    app.add_systems(Update, ui_system.run_if(in_state(AppState::Menu)));
-    app.add_systems(Update, data_display_system);
     app.add_systems(
         Update,
         data_update_system.run_if(in_state(AppState::NoMenu)),
@@ -73,8 +76,11 @@ fn main() {
     app.run();
 }
 
-fn listen_to_menu_key(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) {
-    let egui_context = egui_context.ctx_mut();
+fn listen_to_menu_key(
+    mut egui_context: EguiContexts,
+    mut state: ResMut<NextState<AppState>>,
+) -> Result {
+    let egui_context = egui_context.ctx_mut()?;
     if egui_context.kbgp_user_action() == Some(KbgpActions::ToggleMenu) {
         state.set(AppState::Menu);
         egui_context.kbgp_clear_input();
@@ -86,10 +92,11 @@ fn listen_to_menu_key(mut egui_context: EguiContexts, mut state: ResMut<NextStat
         state.set(AppState::Menu);
         egui_context.kbgp_clear_input();
     }
+    Ok(())
 }
 
-fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) {
-    egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) -> Result {
+    egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
         // ui.input(|input| {
         // info!("{}", input.pointer.primary_clicked());
         // });
@@ -140,6 +147,7 @@ fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppStat
             state.set(AppState::NoMenu);
         }
     });
+    Ok(())
 }
 
 #[derive(Default)]
@@ -155,12 +163,12 @@ struct ClickCountersForKeys(Vec<(KeyCode, ClickCounters)>);
 fn data_display_system(
     mut egui_context: EguiContexts,
     click_counters_for_keys: Res<ClickCountersForKeys>,
-) {
+) -> Result {
     let window = egui::Window::new("Clicks Data").default_pos([0.0, 200.0]);
-    window.show(egui_context.ctx_mut(), |ui| {
+    window.show(egui_context.ctx_mut()?, |ui| {
         for (key_code, click_counters) in click_counters_for_keys.0.iter() {
             ui.horizontal(|ui| {
-                ui.label(format!("{:?}", key_code));
+                ui.label(format!("{key_code:?}"));
                 ui.vertical(|ui| {
                     ui.label(format!("Times Pressed: {}", click_counters.times_pressed));
                     ui.label(format!("Times Released: {}", click_counters.times_released));
@@ -172,6 +180,7 @@ fn data_display_system(
             });
         }
     });
+    Ok(())
 }
 
 fn data_update_system(

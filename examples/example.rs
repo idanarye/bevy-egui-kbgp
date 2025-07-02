@@ -1,6 +1,6 @@
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy_egui::{EguiContextPass, EguiContextSettings, EguiContexts, EguiPlugin};
+use bevy_egui::{EguiContextSettings, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 use bevy_egui_kbgp::egui;
 use bevy_egui_kbgp::prelude::*;
 
@@ -28,9 +28,7 @@ enum MyFocusLabel {
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins);
-    app.add_plugins(EguiPlugin {
-        enable_multipass_for_primary_context: true,
-    });
+    app.add_plugins(EguiPlugin::default());
     app.add_plugins(KbgpPlugin);
     app.add_systems(Startup, |mut settings: Query<&mut EguiContextSettings>| {
         for mut settings in settings.iter_mut() {
@@ -71,8 +69,11 @@ fn main() {
         },
     });
     app.init_state::<MenuState>();
+    app.add_systems(Startup, |mut commands: Commands| {
+        commands.spawn(Camera2d);
+    });
     app.add_systems(
-        EguiContextPass,
+        EguiPrimaryContextPass,
         (
             ui_system.run_if(in_state(MenuState::Main)),
             empty_state_system.run_if(in_state(MenuState::Empty1)),
@@ -147,7 +148,7 @@ fn ui_system(
     gamepad_entities: Query<Entity, With<Gamepad>>,
     mut settable_inputs_of_source: Local<Vec<(KbgpInputSource, Vec<Option<KbgpInput>>)>>,
     mut settable_chords_of_source: Local<Vec<(KbgpInputSource, Vec<HashSet<KbgpInput>>)>>,
-) {
+) -> Result {
     if settable_inputs.is_empty() {
         for _ in 0..3 {
             settable_inputs.push(None);
@@ -170,7 +171,7 @@ fn ui_system(
         let source = all_input_sources[settable_chords_of_source.len()];
         settable_chords_of_source.push((source, vec![Default::default(); 3]));
     }
-    egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+    egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
         menu_controls(ui, &state, &mut next_state);
         ui.horizontal(|ui| {
             for counter in button_counters.iter_mut() {
@@ -345,14 +346,16 @@ fn ui_system(
             }
         });
     });
+    Ok(())
 }
 
 fn empty_state_system(
     mut egui_context: EguiContexts,
     state: Res<State<MenuState>>,
     mut next_state: ResMut<NextState<MenuState>>,
-) {
-    egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+) -> Result {
+    egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
         menu_controls(ui, &state, &mut next_state);
     });
+    Ok(())
 }

@@ -513,17 +513,15 @@ impl KbgpNavCommand {
     ///
     /// ```no_run
     /// use bevy::prelude::*;
-    /// use bevy_egui::{EguiContextPass, EguiContexts, EguiPlugin};
+    /// use bevy_egui::{EguiPrimaryContextPass, EguiContexts, EguiPlugin};
     /// use bevy_egui_kbgp::{egui, bevy_egui};
     /// use bevy_egui_kbgp::prelude::*;
     /// fn main() {
     ///     App::new()
     ///         .add_plugins(DefaultPlugins)
-    ///         .add_plugins(EguiPlugin {
-    ///             enable_multipass_for_primary_context: true,
-    ///         })
+    ///         .add_plugins(EguiPlugin::default())
     ///         .add_plugins(KbgpPlugin)
-    ///         .add_systems(EguiContextPass, ui_system)
+    ///         .add_systems(EguiPrimaryContextPass, ui_system)
     ///         .insert_resource(KbgpSettings {
     ///             bindings: bevy_egui_kbgp::KbgpNavBindings::default()
     ///                 .with_key(KeyCode::Escape, KbgpNavCommand::user(UserAction::Exit))
@@ -543,8 +541,8 @@ impl KbgpNavCommand {
     ///
     /// fn ui_system(
     ///     mut egui_context: EguiContexts,
-    /// ) {
-    ///     egui::CentralPanel::default().show(egui_context.ctx_mut(), |ui| {
+    /// ) -> Result {
+    ///     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
     ///         if matches!(ui.kbgp_user_action(), Some(UserAction::Exit)) {
     ///             println!("User wants to exit");
     ///         }
@@ -561,6 +559,7 @@ impl KbgpNavCommand {
     ///             _ => {}
     ///         }
     ///     });
+    ///     Ok(())
     /// }
     /// ```
     pub fn user<T: 'static + Clone + Send + Sync>(value: T) -> Self {
