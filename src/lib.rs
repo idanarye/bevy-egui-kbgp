@@ -220,33 +220,44 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 /// ```no_run
 /// # use bevy_egui_kbgp::bevy_egui;
 /// # use bevy::prelude::*;
-/// # use bevy_egui::{EguiContexts, EguiPlugin};
+/// # use bevy_egui::input::EguiInputEvent;
+/// # use bevy_egui::{EguiContext, PrimaryEguiContext};
 /// # use bevy_egui_kbgp::prelude::*;
 /// # use bevy_egui_kbgp::KbgpPrepare;
 /// fn custom_kbgp_system(
-///     mut egui_context: EguiContexts,
+///     mut egui_context_query: Query<
+///         (Entity, &mut EguiContext),
+///         With<PrimaryEguiContext>,
+///     >,
+///     mut egui_input_writer: MessageWriter<EguiInputEvent>,
 ///     keys: Res<ButtonInput<KeyCode>>,
 ///     gamepads: Query<(Entity, &Gamepad)>,
 ///     mouse_buttons: Res<ButtonInput<MouseButton>>,
 ///     settings: Res<KbgpSettings>,
 /// ) -> Result {
-///     kbgp_prepare(egui_context.ctx_mut()?, |prp| {
-///         match prp {
-///             KbgpPrepare::Navigation(prp) => {
-///                 prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard, true);
-///                 for (_, gamepad) in gamepads.iter() {
-///                     prp.navigate_gamepad_by_binding(gamepad, &settings.bindings.gamepad_buttons);
+///     let (egui_ctx_entity, mut egui_ctx) = egui_context_query.single_mut()?;
+///     kbgp_prepare(
+///         egui_ctx_entity,
+///         egui_ctx.get_mut(),
+///         &mut egui_input_writer,
+///         |prp| {
+///             match prp {
+///                 KbgpPrepare::Navigation(prp) => {
+///                     prp.navigate_keyboard_by_binding(&keys, &settings.bindings.keyboard, true);
+///                     for (_, gamepad) in gamepads.iter() {
+///                         prp.navigate_gamepad_by_binding(gamepad, &settings.bindings.gamepad_buttons);
+///                     }
+///                 }
+///                 KbgpPrepare::PendingInput(prp) => {
+///                     prp.accept_keyboard_input(&keys);
+///                     prp.accept_mouse_buttons_input(&mouse_buttons);
+///                     for (gamepad_entity, gamepad) in gamepads.iter() {
+///                         prp.accept_gamepad_input(gamepad_entity, gamepad);
+///                     }
 ///                 }
 ///             }
-///             KbgpPrepare::PendingInput(prp) => {
-///                 prp.accept_keyboard_input(&keys);
-///                 prp.accept_mouse_buttons_input(&mouse_buttons);
-///                 for (gamepad_entity, gamepad) in gamepads.iter() {
-///                     prp.accept_gamepad_input(gamepad_entity, gamepad);
-///                 }
-///             }
-///         }
-///     });
+///         },
+///     );
 ///     Ok(())
 /// }
 /// ```
@@ -369,19 +380,18 @@ pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
 ///   * South face button (depends on model - usually X or A): widget activation.
 #[allow(clippy::too_many_arguments)]
 fn kbgp_system_default_input(
-    // mut egui_context: EguiContexts,
-    mut egui_context: Query<
+    mut egui_context_query: Query<
         (Entity, &mut EguiContext, &mut EguiContextSettings),
         With<PrimaryEguiContext>,
     >,
+    mut egui_input_writer: MessageWriter<EguiInputEvent>,
     settings: Res<KbgpSettings>,
     keys: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     mut mouse_wheel_events: MessageReader<bevy::input::mouse::MouseWheel>,
     gamepads: Query<(Entity, &Gamepad)>,
-    mut egui_input_writer: MessageWriter<EguiInputEvent>,
 ) -> Result {
-    let (egui_ctx_entity, mut egui_ctx, mut egui_ctx_settings) = egui_context.single_mut()?;
+    let (egui_ctx_entity, mut egui_ctx, mut egui_ctx_settings) = egui_context_query.single_mut()?;
     let egui_ctx = egui_ctx.get_mut();
     if settings.disable_default_navigation {
         kbgp_intercept_default_navigation(egui_ctx);
