@@ -3,6 +3,7 @@ use std::any::Any;
 use crate::egui;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
+use bevy_egui::input::EguiInputEvent;
 
 use crate::KbgpCommon;
 
@@ -100,8 +101,8 @@ impl KbgpPrepareNavigation {
     /// Navigate the UI with the keyboard.
     ///
     /// Note: Unless
-    /// [`kbgp_intercept_default_activation`](crate::kbgp_intercept_default_activation) is called,
-    /// `mimic_default_activation` should be set to `true`.
+    /// [`run_write_keyboard_input_messages_system`](bevy_egui::EguiInputSystemSettings::run_write_keyboard_input_messages_system)
+    /// is disabled, `mimic_default_activation` should be set to `true`.
     pub fn navigate_keyboard_by_binding(
         &mut self,
         keys: &ButtonInput<KeyCode>,
@@ -162,7 +163,9 @@ impl KbgpNavigationState {
     pub(crate) fn prepare(
         &mut self,
         common: &KbgpCommon,
+        egui_ctx_entity: Entity,
         egui_ctx: &egui::Context,
+        egui_input_writer: &mut MessageWriter<EguiInputEvent>,
         prepare_dlg: impl FnOnce(&mut KbgpPrepareNavigation),
     ) {
         let mut handle = KbgpPrepareNavigation {
@@ -187,15 +190,18 @@ impl KbgpNavigationState {
             }
 
             if effective_input & INPUT_MASK_CLICK != 0 {
-                egui_ctx.input_mut(|input| {
-                    input.events.push(egui::Event::Key {
+                // egui_ctx.input_mut(|input| {
+                egui_input_writer.write(EguiInputEvent {
+                    context: egui_ctx_entity,
+                    event: egui::Event::Key {
                         key: egui::Key::Enter,
                         physical_key: None,
                         pressed: true,
                         modifiers: Default::default(),
                         repeat: false,
-                    });
+                    },
                 });
+                // });
             }
 
             if effective_input & INPUT_MASK_USER_ACTION != 0 {

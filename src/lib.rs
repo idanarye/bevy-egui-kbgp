@@ -80,7 +80,8 @@ pub use bevy_egui::egui;
 
 use bevy::platform::collections::{HashMap, HashSet};
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, EguiPrimaryContextPass};
+use bevy_egui::input::EguiInputEvent;
+use bevy_egui::{EguiContext, EguiContextSettings, PrimaryEguiContext};
 
 use self::navigation::KbgpPrepareNavigation;
 pub use self::navigation::{KbgpNavActivation, KbgpNavBindings, KbgpNavCommand};
@@ -111,8 +112,8 @@ impl Plugin for KbgpPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(KbgpSettings::default());
         app.add_systems(
-            EguiPrimaryContextPass,
-            kbgp_system_default_input.after(bevy_egui::EguiPreUpdateSet::BeginPass),
+            Update,
+            kbgp_system_default_input, //.after(bevy_egui::EguiPreUpdateSet::BeginPass),
         );
     }
 }
@@ -249,7 +250,12 @@ fn kbgp_get(egui_ctx: &egui::Context) -> std::sync::Arc<egui::mutex::Mutex<Kbgp>
 ///     Ok(())
 /// }
 /// ```
-pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepare<'_>)) {
+pub fn kbgp_prepare(
+    egui_ctx_entity: Entity,
+    egui_ctx: &egui::Context,
+    egui_input_writer: &mut MessageWriter<EguiInputEvent>,
+    prepare_dlg: impl FnOnce(KbgpPrepare<'_>),
+) {
     let kbgp = kbgp_get(egui_ctx);
     let mut kbgp = kbgp.lock();
     // Since Bevy is allow to reorder systems mid-run, there is a risk that the KBGP prepare system
@@ -262,9 +268,13 @@ pub fn kbgp_prepare(egui_ctx: &egui::Context, prepare_dlg: impl FnOnce(KbgpPrepa
     let Kbgp { common, state } = &mut *kbgp;
     match state {
         KbgpState::Navigation(state) => {
-            state.prepare(common, egui_ctx, |prp| {
-                prepare_dlg(KbgpPrepare::Navigation(prp))
-            });
+            state.prepare(
+                common,
+                egui_ctx_entity,
+                egui_ctx,
+                egui_input_writer,
+                |prp| prepare_dlg(KbgpPrepare::Navigation(prp)),
+            );
             if let Some(focus_on) = state.focus_on.take() {
                 egui_ctx.memory_mut(|memory| memory.request_focus(focus_on));
             }
@@ -298,24 +308,6 @@ pub fn kbgp_intercept_default_navigation(egui_ctx: &egui::Context) {
                 },
             );
         }
-    });
-}
-
-/// Hide from egui Space and Enter key events.
-///
-/// KBGP gets its keys directly from Bevy, so this function will not hide these keys from it.
-pub fn kbgp_intercept_default_activation(egui_ctx: &egui::Context) {
-    egui_ctx.input_mut(|input| {
-        input.events.retain(|evt| match evt {
-            egui::Event::Key {
-                key,
-                physical_key: None,
-                pressed: true,
-                modifiers: _,
-                repeat: _,
-            } => !matches!(key, egui::Key::Enter | egui::Key::Space),
-            _ => true,
-        });
     });
 }
 
@@ -377,19 +369,27 @@ pub fn kbgp_focus_on_mouse_movement(egui_ctx: &egui::Context) {
 ///   * South face button (depends on model - usually X or A): widget activation.
 #[allow(clippy::too_many_arguments)]
 fn kbgp_system_default_input(
-    mut egui_context: EguiContexts,
+    // mut egui_context: EguiContexts,
+    mut egui_context: Query<
+        (Entity, &mut EguiContext, &mut EguiContextSettings),
+        With<PrimaryEguiContext>,
+    >,
     settings: Res<KbgpSettings>,
     keys: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
-    mut mouse_wheel_events: EventReader<bevy::input::mouse::MouseWheel>,
+    mut mouse_wheel_events: MessageReader<bevy::input::mouse::MouseWheel>,
     gamepads: Query<(Entity, &Gamepad)>,
+    mut egui_input_writer: MessageWriter<EguiInputEvent>,
 ) -> Result {
-    let egui_ctx = egui_context.ctx_mut()?;
+    let (egui_ctx_entity, mut egui_ctx, mut egui_ctx_settings) = egui_context.single_mut()?;
+    let egui_ctx = egui_ctx.get_mut();
     if settings.disable_default_navigation {
         kbgp_intercept_default_navigation(egui_ctx);
     }
     if settings.disable_default_activation {
-        kbgp_intercept_default_activation(egui_ctx);
+        egui_ctx_settings
+            .input_system_settings
+            .run_write_keyboard_input_messages_system = false;
     }
     if settings.prevent_loss_of_focus {
         kbgp_prevent_loss_of_focus(egui_ctx);
@@ -398,44 +398,52 @@ fn kbgp_system_default_input(
         kbgp_focus_on_mouse_movement(egui_ctx);
     }
 
-    kbgp_prepare(egui_ctx, |prp| match prp {
-        KbgpPrepare::Navigation(prp) => {
-            if settings.allow_keyboard {
-                prp.navigate_keyboard_by_binding(
-                    &keys,
-                    &settings.bindings.keyboard,
-                    !settings.disable_default_activation,
-                );
-            }
-            if settings.allow_gamepads {
-                for (_, gamepad) in gamepads.iter() {
-                    prp.navigate_gamepad_by_binding(gamepad, &settings.bindings.gamepad_buttons);
-                }
-            }
-        }
-        KbgpPrepare::PendingInput(prp) => {
-            if settings.allow_keyboard {
-                prp.accept_keyboard_input(&keys);
-            }
-            if settings.allow_mouse_buttons {
-                prp.accept_mouse_buttons_input(&mouse_buttons);
-            }
-            if settings.allow_mouse_wheel || settings.allow_mouse_wheel_sideways {
-                for event in mouse_wheel_events.read() {
-                    prp.accept_mouse_wheel_event(
-                        event,
-                        settings.allow_mouse_wheel,
-                        settings.allow_mouse_wheel_sideways,
+    kbgp_prepare(
+        egui_ctx_entity,
+        egui_ctx,
+        &mut egui_input_writer,
+        |prp| match prp {
+            KbgpPrepare::Navigation(prp) => {
+                if settings.allow_keyboard {
+                    prp.navigate_keyboard_by_binding(
+                        &keys,
+                        &settings.bindings.keyboard,
+                        !settings.disable_default_activation,
                     );
                 }
-            }
-            if settings.allow_gamepads {
-                for (gamepad_entity, gamepad) in gamepads.iter() {
-                    prp.accept_gamepad_input(gamepad_entity, gamepad);
+                if settings.allow_gamepads {
+                    for (_, gamepad) in gamepads.iter() {
+                        prp.navigate_gamepad_by_binding(
+                            gamepad,
+                            &settings.bindings.gamepad_buttons,
+                        );
+                    }
                 }
             }
-        }
-    });
+            KbgpPrepare::PendingInput(prp) => {
+                if settings.allow_keyboard {
+                    prp.accept_keyboard_input(&keys);
+                }
+                if settings.allow_mouse_buttons {
+                    prp.accept_mouse_buttons_input(&mouse_buttons);
+                }
+                if settings.allow_mouse_wheel || settings.allow_mouse_wheel_sideways {
+                    for event in mouse_wheel_events.read() {
+                        prp.accept_mouse_wheel_event(
+                            event,
+                            settings.allow_mouse_wheel,
+                            settings.allow_mouse_wheel_sideways,
+                        );
+                    }
+                }
+                if settings.allow_gamepads {
+                    for (gamepad_entity, gamepad) in gamepads.iter() {
+                        prp.accept_gamepad_input(gamepad_entity, gamepad);
+                    }
+                }
+            }
+        },
+    );
     Ok(())
 }
 

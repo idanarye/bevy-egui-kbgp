@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Upgrade Bevy to 0.17 and bevy_egui to 0.37.
+- Automatically set
+  `EguiInputSystemSettings::run_write_keyboard_input_messages_system` to
+  `false` when `disable_default_activation` is set.
+
+### Removed
+- `kbgp_intercept_default_activation` - the hack that enabled it no longer
+  works. Instead, set
+  `EguiInputSystemSettings::run_write_keyboard_input_messages_system` to
+  `false`. Note that this function was only useful for those who call
+  `kbgp_prepare` manually - games that rely on `KbgpPlugin` are not affected
+  because the plugin registered system was already calling it.
 
 ## 0.26.0 - 2025-08-05
 ### Changed
