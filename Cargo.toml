@@ -15,7 +15,7 @@ categories = ["game-engines", "gui"]
 
 [dependencies]
 bevy = { version = "^0.17", default-features = false }
-bevy_egui = { version = "^0.37", default-features = false }
+bevy_egui = { version = "^0.38", default-features = false }
 
 [dev-dependencies]
 bevy = { version = "^0.17", default-features = false, features = [
@@ -28,7 +28,7 @@ bevy = { version = "^0.17", default-features = false, features = [
     "bevy_picking",
     "bevy_core_pipeline",
 ] }
-bevy_egui = { version = "^0.37", default-features = false, features = ["default_fonts", "render"] }
+bevy_egui = { version = "^0.38", default-features = false, features = ["default_fonts", "render"] }
 
 # Note: these are needed for the WASM example to work
 getrandom = { version = "0.3", features = ["wasm_js"] }
