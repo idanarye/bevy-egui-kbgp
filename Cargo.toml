@@ -2,7 +2,7 @@
 name = "bevy-egui-kbgp"
 description = "Better keyboard and gamepad story for egui in Bevy"
 version = "0.28.0"
-edition = "2021"
+edition = "2024"
 authors = ["IdanArye <idanarye@gmail.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/idanarye/bevy-egui-kbgp"

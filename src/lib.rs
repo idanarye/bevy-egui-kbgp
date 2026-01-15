@@ -93,7 +93,6 @@ mod navigation;
 mod pending_input;
 
 pub mod prelude {
-    pub use crate::kbgp_prepare;
     pub use crate::KbgpEguiResponseExt;
     pub use crate::KbgpEguiUiCtxExt;
     pub use crate::KbgpInput;
@@ -103,6 +102,7 @@ pub mod prelude {
     pub use crate::KbgpNavCommand;
     pub use crate::KbgpPlugin;
     pub use crate::KbgpSettings;
+    pub use crate::kbgp_prepare;
 }
 
 /// Adds KBGP input handling system and [`KbgpSettings`].
@@ -725,13 +725,12 @@ impl KbgpEguiResponseExt for egui::Response {
         let mut kbgp = kbgp.lock();
         match &mut kbgp.state {
             KbgpState::Navigation(state) => {
-                if let Some(focus_label) = &state.focus_label {
-                    if let Some(focus_label) = focus_label.downcast_ref::<T>() {
-                        if focus_label == &label {
-                            state.focus_label = None;
-                            state.focus_on = Some(self.id);
-                        }
-                    }
+                if let Some(focus_label) = &state.focus_label
+                    && let Some(focus_label) = focus_label.downcast_ref::<T>()
+                    && focus_label == &label
+                {
+                    state.focus_label = None;
+                    state.focus_on = Some(self.id);
                 }
             }
             KbgpState::PendingInput(_) => {}
@@ -804,14 +803,13 @@ impl KbgpEguiResponseExt for egui::Response {
     fn kbgp_click_released(&self) -> bool {
         let kbgp = kbgp_get(&self.ctx);
         let kbgp = kbgp.lock();
-        if let KbgpState::Navigation(state) = &kbgp.state {
-            if let navigation::PendingReleaseState::NodeHoldReleased {
+        if let KbgpState::Navigation(state) = &kbgp.state
+            && let navigation::PendingReleaseState::NodeHoldReleased {
                 id,
                 user_action: None,
             } = &state.pending_release_state
-            {
-                return *id == self.id;
-            }
+        {
+            return *id == self.id;
         }
         // Otherwise it would not accept mouse clicks
         if self.hovered() && self.ctx.input(|input| input.pointer.primary_released()) {
@@ -824,16 +822,14 @@ impl KbgpEguiResponseExt for egui::Response {
         if self.has_focus() {
             let kbgp = kbgp_get(&self.ctx);
             let kbgp = kbgp.lock();
-            if let KbgpState::Navigation(state) = &kbgp.state {
-                if let navigation::PendingReleaseState::NodeHoldReleased {
+            if let KbgpState::Navigation(state) = &kbgp.state
+                && let navigation::PendingReleaseState::NodeHoldReleased {
                     id,
                     user_action: Some(user_action),
                 } = &state.pending_release_state
-                {
-                    if *id == self.id {
-                        return user_action.downcast_ref().cloned();
-                    }
-                }
+                && *id == self.id
+            {
+                return user_action.downcast_ref().cloned();
             }
         }
         None
