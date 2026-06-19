@@ -1,6 +1,6 @@
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use bevy_egui::{EguiContextSettings, EguiContexts, EguiPlugin, EguiPrimaryContextPass};
+use bevy_egui::{EguiContexts, EguiPlugin, EguiPrimaryContextPass};
 use bevy_egui_kbgp::egui;
 use bevy_egui_kbgp::prelude::*;
 
@@ -30,11 +30,6 @@ fn main() {
     app.add_plugins(DefaultPlugins);
     app.add_plugins(EguiPlugin::default());
     app.add_plugins(KbgpPlugin);
-    app.add_systems(Startup, |mut settings: Query<&mut EguiContextSettings>| {
-        for mut settings in settings.iter_mut() {
-            settings.scale_factor = 1.5;
-        }
-    });
     app.insert_resource(KbgpSettings {
         disable_default_navigation: true,
         disable_default_activation: true,
@@ -171,7 +166,17 @@ fn ui_system(
         let source = all_input_sources[settable_chords_of_source.len()];
         settable_chords_of_source.push((source, vec![Default::default(); 3]));
     }
-    egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
+
+    let ctx = egui_context.ctx_mut()?;
+    let mut viewport_ui = egui::Ui::new(
+        ctx.clone(),
+        "viewport".into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    );
+
+    egui::CentralPanel::default().show_inside(&mut viewport_ui, |ui| {
         menu_controls(ui, &state, &mut next_state);
         ui.horizontal(|ui| {
             for counter in button_counters.iter_mut() {
@@ -184,10 +189,10 @@ fn ui_system(
                         *counter += 1;
                     }
                     KbgpNavActivation::ClickedSecondary
-                    | KbgpNavActivation::User(MyActions::Delete) => {
-                        if 0 < *counter {
-                            *counter -= 1;
-                        }
+                    | KbgpNavActivation::User(MyActions::Delete)
+                        if 0 < *counter =>
+                    {
+                        *counter -= 1;
                     }
                     _ => {}
                 }
@@ -204,10 +209,10 @@ fn ui_system(
             KbgpNavActivation::Clicked => {
                 *counter_on_release += 1;
             }
-            KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete) => {
-                if 0 < *counter_on_release {
-                    *counter_on_release -= 1;
-                }
+            KbgpNavActivation::ClickedSecondary | KbgpNavActivation::User(MyActions::Delete)
+                if 0 < *counter_on_release =>
+            {
+                *counter_on_release -= 1;
             }
             _ => {}
         }
@@ -354,7 +359,16 @@ fn empty_state_system(
     state: Res<State<MenuState>>,
     mut next_state: ResMut<NextState<MenuState>>,
 ) -> Result {
-    egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
+    let ctx = egui_context.ctx_mut()?;
+    let mut viewport_ui = egui::Ui::new(
+        ctx.clone(),
+        "viewport".into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    );
+
+    egui::CentralPanel::default().show_inside(&mut viewport_ui, |ui| {
         menu_controls(ui, &state, &mut next_state);
     });
     Ok(())

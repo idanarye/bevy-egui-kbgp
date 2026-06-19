@@ -96,10 +96,16 @@ fn listen_to_menu_key(
 }
 
 fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppState>>) -> Result {
-    egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
-        // ui.input(|input| {
-        // info!("{}", input.pointer.primary_clicked());
-        // });
+    let ctx = egui_context.ctx_mut()?;
+    let mut viewport_ui = egui::Ui::new(
+        ctx.clone(),
+        "viewport".into(),
+        egui::UiBuilder::new()
+            .layer_id(egui::LayerId::background())
+            .max_rect(ctx.viewport_rect()),
+    );
+
+    egui::CentralPanel::default().show_inside(&mut viewport_ui, |ui| {
         ui.button("Does Nothing")
             .kbgp_navigation()
             .kbgp_initial_focus();

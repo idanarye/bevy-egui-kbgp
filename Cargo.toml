@@ -1,7 +1,7 @@
 [package]
 name = "bevy-egui-kbgp"
 description = "Better keyboard and gamepad story for egui in Bevy"
-version = "0.29.0"
+version = "0.30.0"
 edition = "2024"
 authors = ["IdanArye <idanarye@gmail.com>"]
 license = "MIT/Apache-2.0"
@@ -14,11 +14,11 @@ categories = ["game-engines", "gui"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "^0.18", default-features = false }
-bevy_egui = { version = "^0.39", default-features = false }
+bevy = { version = "^0.19", default-features = false }
+bevy_egui = { version = "^0.40", default-features = false }
 
 [dev-dependencies]
-bevy = { version = "^0.18", default-features = false, features = [
+bevy = { version = "^0.19", default-features = false, features = [
     "bevy_gilrs",
     "x11",
     "bevy_state",
@@ -27,11 +27,12 @@ bevy = { version = "^0.18", default-features = false, features = [
     "bevy_asset",
     "bevy_picking",
     "bevy_core_pipeline",
+    "bevy_log",
 ] }
-bevy_egui = { version = "^0.39", default-features = false, features = ["default_fonts", "render"] }
+bevy_egui = { version = "^0.40", default-features = false, features = ["default_fonts", "render"] }
 
 # Note: these are needed for the WASM example to work
-getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom = { version = "0.4", features = ["wasm_js"] }
 
 [package.metadata.docs.rs]
 features = ["bevy/x11"] # required for bevy_egui
