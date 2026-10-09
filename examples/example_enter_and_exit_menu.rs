@@ -105,7 +105,7 @@ fn ui_system(mut egui_context: EguiContexts, mut state: ResMut<NextState<AppStat
             .max_rect(ctx.viewport_rect()),
     );
 
-    egui::CentralPanel::default().show_inside(&mut viewport_ui, |ui| {
+    egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
         ui.button("Does Nothing")
             .kbgp_navigation()
             .kbgp_initial_focus();

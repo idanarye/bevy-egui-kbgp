@@ -36,7 +36,16 @@
 //!     mut egui_context: EguiContexts,
 //!     keys: Res<ButtonInput<KeyCode>>,
 //! ) -> Result {
-//!     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
+//!     let ctx = egui_context.ctx_mut()?;
+//!     let mut viewport_ui = egui::Ui::new(
+//!         ctx.clone(),
+//!         "viewport".into(),
+//!         egui::UiBuilder::new()
+//!             .layer_id(egui::LayerId::background())
+//!             .max_rect(ctx.viewport_rect()),
+//!     );
+//!
+//!     egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
 //!         if ui
 //!             .button("Button")
 //!             .kbgp_initial_focus()
@@ -618,7 +627,16 @@ pub trait KbgpEguiResponseExt: Sized {
     ///     mut egui_context: EguiContexts,
     ///     mut jump_input: ResMut<JumpInput>,
     /// ) -> Result {
-    ///     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
+    ///     let ctx = egui_context.ctx_mut()?;
+    ///     let mut viewport_ui = egui::Ui::new(
+    ///         ctx.clone(),
+    ///         "viewport".into(),
+    ///         egui::UiBuilder::new()
+    ///             .layer_id(egui::LayerId::background())
+    ///             .max_rect(ctx.viewport_rect()),
+    ///     );
+    ///
+    ///     egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
     ///         ui.horizontal(|ui| {
     ///             ui.label("Set button for jumping");
     ///             if let Some(new_jump_input) = ui.button(format!("{}", jump_input.0))
@@ -667,7 +685,16 @@ pub trait KbgpEguiResponseExt: Sized {
     ///     mut egui_context: EguiContexts,
     ///     mut jump_chord: ResMut<JumpChord>,
     /// ) -> Result {
-    ///     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
+    ///     let ctx = egui_context.ctx_mut()?;
+    ///     let mut viewport_ui = egui::Ui::new(
+    ///         ctx.clone(),
+    ///         "viewport".into(),
+    ///         egui::UiBuilder::new()
+    ///             .layer_id(egui::LayerId::background())
+    ///             .max_rect(ctx.viewport_rect()),
+    ///     );
+    ///
+    ///     egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
     ///         ui.horizontal(|ui| {
     ///             ui.label("Set chord of buttons for jumping");
     ///             if let Some(new_jump_chord) = ui
