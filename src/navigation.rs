@@ -548,7 +548,16 @@ impl KbgpNavCommand {
     /// fn ui_system(
     ///     mut egui_context: EguiContexts,
     /// ) -> Result {
-    ///     egui::CentralPanel::default().show(egui_context.ctx_mut()?, |ui| {
+    ///     let ctx = egui_context.ctx_mut()?;
+    ///     let mut viewport_ui = egui::Ui::new(
+    ///         ctx.clone(),
+    ///         "viewport".into(),
+    ///         egui::UiBuilder::new()
+    ///             .layer_id(egui::LayerId::background())
+    ///             .max_rect(ctx.viewport_rect()),
+    ///     );
+    ///
+    ///     egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
     ///         if matches!(ui.kbgp_user_action(), Some(UserAction::Exit)) {
     ///             println!("User wants to exit");
     ///         }

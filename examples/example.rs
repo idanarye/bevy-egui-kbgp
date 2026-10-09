@@ -176,7 +176,7 @@ fn ui_system(
             .max_rect(ctx.viewport_rect()),
     );
 
-    egui::CentralPanel::default().show_inside(&mut viewport_ui, |ui| {
+    egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
         menu_controls(ui, &state, &mut next_state);
         ui.horizontal(|ui| {
             for counter in button_counters.iter_mut() {
@@ -368,7 +368,7 @@ fn empty_state_system(
             .max_rect(ctx.viewport_rect()),
     );
 
-    egui::CentralPanel::default().show_inside(&mut viewport_ui, |ui| {
+    egui::CentralPanel::default().show(&mut viewport_ui, |ui| {
         menu_controls(ui, &state, &mut next_state);
     });
     Ok(())
